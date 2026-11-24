@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#060913" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VoltDeck" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <title>VoltDeck</title>
+  <link rel="stylesheet" href="/static/shared.css" />
+  <link rel="stylesheet" href="/static/mobile.css" />
+</head>
+<body>
+  <!-- Engineer Lightning ("PETIR") Brief Boot Splash -->
+  <div class="boot-splash" id="boot-splash" aria-label="Memuat VoltDeck">
+    <div class="boot-core">
+      <div class="boot-emblem">
+        <svg class="boot-svg" viewBox="0 0 84 84" fill="none" aria-hidden="true">
+          <path class="boot-frame" d="M20 8 H64 L76 20 V64 L64 76 H20 L8 64 V20 Z" />
+          <circle class="boot-ring" cx="42" cy="42" r="29" />
+          <line x1="42" y1="2" x2="42" y2="8" stroke="rgba(255,255,255,0.28)" stroke-width="1.2" />
+          <line x1="42" y1="76" x2="42" y2="82" stroke="rgba(255,255,255,0.28)" stroke-width="1.2" />
+          <line x1="2" y1="42" x2="8" y2="42" stroke="rgba(255,255,255,0.28)" stroke-width="1.2" />
+          <line x1="76" y1="42" x2="82" y2="42" stroke="rgba(255,255,255,0.28)" stroke-width="1.2" />
+          <path class="boot-bolt-fill" d="M46 18 L27 45 H41 L37 66 L57 38 H43 Z" />
+          <path class="boot-bolt-outline" d="M46 18 L27 45 H41 L37 66 L57 38 H43 Z" />
+        </svg>
+      </div>
+      <div class="boot-wordmark">
+        <div class="boot-title">VOLTDECK</div>
+        <div class="boot-spec">TRANSFER & REMOTE DECK</div>
+      </div>
+      <div class="boot-bar-track">
+        <div class="boot-bar-fill"></div>
+      </div>
+    </div>
+    <div class="boot-copyright">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
+      </svg>
+      <span>© 2026 VoltDeck · Precision Local Transfer & Remote Deck</span>
+    </div>
+  </div>
+
+  <!-- Adaptive VoltDeck Midnight Character Backdrop (Compact portrait on phone, full hero on desktop) -->
+  <div class="m-hero-backdrop" aria-hidden="true">
+    <div class="m-hero-glow"></div>
+    <picture>
+      <source media="(min-width: 900px)" srcset="/static/hero-character.png" />
+      <img class="m-hero-art" src="/static/hero-character-mobile.png" alt="" />
+    </picture>
+  </div>
+
+  <!-- 6-Digit Security PIN Gate -->
+  <main class="pin-screen" id="pin-screen">
+    <div class="pin-card">
+      <div class="pin-brand">
+        <div class="pin-brand-icon vd-orb-sm" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff">
+            <path d="M13.5 2L4 14h7l-1.5 8L20 10h-7l.5-8z" />
+          </svg>
+        </div>
+        <span class="pin-title">VOLTDECK</span>
+      </div>
+      <p class="pin-subtitle">
+        Masukkan PIN 6 digit di <span class="pin-host-badge" id="pin-host">Linux Mint</span>
+      </p>
+
+      <input
+        type="text"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        autocomplete="one-time-code"
+        maxlength="6"
+        id="pin-native-input"
+        class="pin-hidden-input"
+        aria-label="Masukkan PIN 6 digit"
+      />
+
+      <div class="pin-slots" id="pin-slots" aria-label="PIN 6 Digit">
+        <div class="pin-slot active"></div>
+        <div class="pin-slot"></div>
+        <div class="pin-slot"></div>
+        <div class="pin-slot"></div>
+        <div class="pin-slot"></div>
+        <div class="pin-slot"></div>
+      </div>
+
+      <div class="pin-error" id="pin-error"></div>
+
+      <div class="keypad" id="keypad">
+        <button class="key-btn" data-key="1" type="button">1</button>
+        <button class="key-btn" data-key="2" type="button">2</button>
+        <button class="key-btn" data-key="3" type="button">3</button>
+        <button class="key-btn" data-key="4" type="button">4</button>
+        <button class="key-btn" data-key="5" type="button">5</button>
+        <button class="key-btn" data-key="6" type="button">6</button>
+        <button class="key-btn" data-key="7" type="button">7</button>
+        <button class="key-btn" data-key="8" type="button">8</button>
+        <button class="key-btn" data-key="9" type="button">9</button>
+        <button class="key-btn key-muted" data-key="clear" type="button">Hapus</button>
+        <button class="key-btn" data-key="0" type="button">0</button>
+        <button class="key-btn key-muted" data-key="back" type="button" aria-label="Backspace">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+            <line x1="18" y1="9" x2="12" y2="15"></line>
+            <line x1="12" y1="9" x2="18" y2="15"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Authenticated Mobile Workspace -->
+  <div class="mobile-app hidden" id="mobile-app">
+    <header class="m-header">
+      <div class="m-brand">
+        <div class="pin-brand-icon vd-orb-sm" style="width:30px;height:30px" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffffff">
+            <path d="M13.5 2L4 14h7l-1.5 8L20 10h-7l.5-8z" />
+          </svg>
+        </div>
+        <div class="m-brand-text">
+          <div class="m-title">VOLTDECK</div>
+          <div class="m-sub">
+            <span class="dot dot-pulse" id="m-live-dot"></span>
+            <span id="m-host-name">Linux Mint</span>
+            <span class="tag" id="m-zone-badge" style="height:17px;font-size:9.5px">LAN</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-sm btn-ghost" id="btn-logout" title="Putuskan sesi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        Kunci
+      </button>
+    </header>
+
+    <!-- Files Tab -->
+    <section class="m-content" id="m-view-files">
+      <div class="send-card">
+        <div class="send-card-head">
+          <span class="m-section-label">Kirim ke Linux Mint</span>
+          <span class="tag">STREAMING LAN</span>
+        </div>
+        <div class="send-actions send-actions-3">
+          <button class="btn btn-primary send-btn" id="btn-pick-media" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            Galeri
+          </button>
+          <button class="btn send-btn" id="btn-pick-camera" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            Kamera
+          </button>
+          <button class="btn send-btn" id="btn-pick-files" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            File
+          </button>
+        </div>
+        <input type="file" id="input-media" class="hidden" accept="image/*,video/*" multiple />
+        <input type="file" id="input-camera" class="hidden" accept="image/*" capture="environment" />
+        <input type="file" id="input-files" class="hidden" multiple />
+      </div>
+
+      <!-- Active Streaming Uploads / Downloads -->
+      <div id="m-transfers-wrap" class="hidden">
+        <div class="section-row">
+          <span class="m-section-label">Transfer Aktif</span>
+        </div>
+        <div class="m-file-list" id="m-transfers-list"></div>
+      </div>
+
+      <!-- Files from Linux Mint -->
+      <div>
+        <div class="section-row">
+          <span class="m-section-label">Dari Linux Mint</span>
+          <a class="btn btn-sm hidden" id="btn-download-zip" href="/api/files/zip">Unduh Semua (.zip)</a>
+        </div>
+        <div class="m-file-list" id="m-outbound-list"></div>
+      </div>
+
+      <!-- Files Sent from iPhone -->
+      <div id="m-inbound-wrap" class="hidden">
+        <div class="section-row">
+          <span class="m-section-label">Terkirim ke Linux Mint</span>
+        </div>
+        <div class="m-file-list" id="m-inbound-list"></div>
+      </div>
+    </section>
+
+    <!-- Gallery Tab (Ambil Gambar, Foto Webcam, & Screenshot dari Laptop) -->
+    <section class="m-content hidden" id="m-view-gallery">
+      <div class="send-card">
+        <div class="send-card-head">
+          <span class="m-section-label">Ambil Gambar Instan dari Laptop</span>
+          <span class="tag">DIRECT PULL</span>
+        </div>
+        <div class="r-power-quick">
+          <button class="btn btn-primary send-btn" id="btn-cap-webcam" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            Foto Webcam
+          </button>
+          <button class="btn send-btn" id="btn-cap-screen" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Screenshot Layar
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-row">
+          <span class="m-section-label">Galeri Folder Laptop</span>
+          <button class="btn btn-sm" id="btn-gallery-refresh" type="button">Muat Ulang</button>
+        </div>
+        <div class="gallery-folders" id="gallery-folders"></div>
+        <div class="gallery-grid" id="gallery-grid">
+          <div class="m-empty" style="grid-column:1/-1">Memuat gambar dari folder laptop...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Clipboard Tab -->
+    <section class="m-content hidden" id="m-view-clipboard">
+      <div class="clip-responsive-grid">
+        <div class="clip-col-main">
+          <div class="m-clip-latest hidden" id="m-clip-latest">
+            <div class="section-row" style="margin-bottom:0">
+              <span class="m-section-label">Clipboard Terbaru</span>
+              <span class="tag" id="m-clip-latest-src">Linux</span>
+            </div>
+            <pre class="m-clip-preview" id="m-clip-latest-text"></pre>
+            <button class="btn btn-primary m-clip-btn" id="btn-copy-latest" type="button">
+              Salin ke Perangkat
+            </button>
+          </div>
+
+          <div class="m-clip-compose">
+            <span class="m-section-label">Kirim Teks / Link ke Laptop</span>
+            <textarea
+              id="m-clip-input"
+              class="m-textarea"
+              placeholder="Tempel link dari WA, kode OTP, atau catatan di sini..."
+            ></textarea>
+            <div class="m-clip-actions">
+              <button class="btn btn-primary m-clip-btn" id="btn-m-send-clip" type="button">
+                Kirim ke Clipboard
+              </button>
+              <button class="btn btn-primary m-clip-btn hidden" id="btn-m-open-link" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                Buka di Laptop
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="clip-col-hist">
+          <div class="section-row">
+            <span class="m-section-label">Riwayat Clipboard</span>
+          </div>
+          <div class="m-file-list" id="m-clip-history"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Remote Control Tab (Telemetry, Controls, Live Screen, Touchpad) -->
+    <section class="m-content hidden" id="m-view-remote">
+      <!-- Active Shutdown / Restart / Sleep Countdown Banner -->
+      <div class="m-power-alert hidden" id="m-power-alert">
+        <div class="m-power-alert-title" id="m-power-alert-title">Mematikan Laptop</div>
+        <div class="m-power-countdown mono" id="m-power-countdown">00:15</div>
+        <button class="btn btn-danger m-clip-btn" id="btn-m-cancel-power" type="button">
+          Batalkan Sekarang
+        </button>
+      </div>
+
+      <div class="m-empty hidden" id="m-remote-disabled">
+        Remote Control sedang dinonaktifkan di aplikasi Linux Mint. Aktifkan toggle <strong>Remote</strong> di desktop.
+      </div>
+
+      <div id="m-remote-body" style="display:flex;flex-direction:column;gap:12px">
+        <!-- Compact System Telemetry Strip -->
+        <div class="telemetry-strip" id="r-telemetry">
+          <div class="tele-cell">
+            <span class="tele-k">BATERAI</span>
+            <span class="tele-v mono" id="t-bat">—</span>
+          </div>
+          <div class="tele-cell">
+            <span class="tele-k">CPU</span>
+            <span class="tele-v mono" id="t-cpu">—</span>
+          </div>
+          <div class="tele-cell">
+            <span class="tele-k">RAM</span>
+            <span class="tele-v mono" id="t-ram">—</span>
+          </div>
+          <div class="tele-cell">
+            <span class="tele-k">SUHU</span>
+            <span class="tele-v mono" id="t-temp">—</span>
+          </div>
+        </div>
+
+        <!-- Remote Sub-Navigation (4 Sub-Views) -->
+        <div class="r-subtabs r-subtabs-4" role="tablist">
+          <button class="r-subtab active" data-rsub="controls" type="button">Kontrol</button>
+          <button class="r-subtab" data-rsub="apps" type="button">Aplikasi</button>
+          <button class="r-subtab" data-rsub="screen" type="button">Layar Live</button>
+          <button class="r-subtab" data-rsub="touchpad" type="button">Touchpad</button>
+        </div>
+
+        <!-- SUB-VIEW 1: Media, Audio/Sink, Brightness, Power -->
+        <div class="r-subpanel r-controls-grid" id="r-panel-controls">
+          <!-- Media Playback Deck + Seek ±10s -->
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Media Laptop</span>
+              <span class="tag" id="r-media-player">STANDBY</span>
+            </div>
+            <div class="r-track-title" id="r-media-title">Tidak ada media aktif</div>
+            <div class="r-track-artist" id="r-media-artist">YouTube, Spotify, VLC, atau pemutar lain</div>
+            <div class="r-media-controls">
+              <button class="btn r-ctrl-btn" data-media="previous" type="button" aria-label="Sebelumnya">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                  <line x1="5" y1="19" x2="5" y2="5"></line>
+                </svg>
+              </button>
+              <button class="btn btn-primary r-ctrl-btn r-ctrl-main" data-media="play_pause" type="button" aria-label="Putar atau Jeda">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Play / Pause
+              </button>
+              <button class="btn r-ctrl-btn" data-media="next" type="button" aria-label="Berikutnya">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                  <line x1="19" y1="5" x2="19" y2="19"></line>
+                </svg>
+              </button>
+            </div>
+            <div class="r-seek-row">
+              <button class="btn r-ctrl-btn" data-seek="-10" type="button">↺ -10 dtk</button>
+              <button class="btn r-ctrl-btn" data-seek="10" type="button">+10 dtk ↻</button>
+            </div>
+          </div>
+
+          <!-- Audio Volume + Output Sink Switcher -->
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Audio & Output</span>
+              <span class="mono r-vol-val" id="r-vol-val">—%</span>
+            </div>
+            <input type="range" id="r-vol-slider" class="r-slider" min="0" max="100" value="50" />
+            <div class="r-vol-row">
+              <button class="btn r-ctrl-btn" id="btn-vol-down" type="button">-5%</button>
+              <button class="btn r-ctrl-btn" id="btn-vol-mute" type="button">Mute</button>
+              <button class="btn r-ctrl-btn" id="btn-vol-up" type="button">+5%</button>
+            </div>
+            <select id="r-sink-select" class="r-select hidden" aria-label="Pilih Output Audio"></select>
+          </div>
+
+          <!-- Screen Brightness & Display Off -->
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Kecerahan & Layar</span>
+              <span class="mono r-vol-val" id="r-bright-val">—%</span>
+            </div>
+            <input type="range" id="r-bright-slider" class="r-slider" min="10" max="100" value="80" />
+            <button class="btn r-ctrl-btn" id="btn-display-off" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+                <line x1="2" y1="2" x2="22" y2="22"></line>
+              </svg>
+              Matikan Layar Saja (Laptop Tetap Nyala)
+            </button>
+          </div>
+
+          <!-- Power & Security Control -->
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Kontrol Daya Laptop</span>
+              <span class="tag">AMAN · 2-STEP</span>
+            </div>
+            <div class="r-power-quick">
+              <button class="btn r-ctrl-btn" id="btn-power-lock" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Kunci Layar
+              </button>
+              <button class="btn r-ctrl-btn" id="btn-power-sleep" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                Sleep
+              </button>
+            </div>
+
+            <div class="r-delay-section">
+              <div class="r-delay-label">Timer Matikan / Restart</div>
+              <div class="r-delay-chips" id="r-delay-chips">
+                <button class="delay-chip active" data-delay="15" type="button">15 dtk</button>
+                <button class="delay-chip" data-delay="900" type="button">15 mnt</button>
+                <button class="delay-chip" data-delay="1800" type="button">30 mnt</button>
+                <button class="delay-chip" data-delay="3600" type="button">60 mnt</button>
+              </div>
+            </div>
+
+            <div class="r-power-quick">
+              <button class="btn r-ctrl-btn" id="btn-power-restart" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                <span id="btn-restart-label">Restart</span>
+              </button>
+              <button class="btn btn-danger r-ctrl-btn" id="btn-power-shutdown" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                  <line x1="12" y1="2" x2="12" y2="12"></line>
+                </svg>
+                <span id="btn-shutdown-label">Matikan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-VIEW 1B: App Launcher (Buka Aplikasi Laptop dari iOS/Web) -->
+        <div class="r-subpanel hidden" id="r-panel-apps">
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Buka Aplikasi di Laptop</span>
+              <span class="tag" id="apps-count-tag">0 APP</span>
+            </div>
+            <div class="apps-grid" id="r-apps-grid">
+              <div class="m-empty" style="grid-column:1/-1">Memuat daftar aplikasi terpasang...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-VIEW 2: Live Screen MJPEG Stream & Snapshot -->
+        <div class="r-subpanel hidden" id="r-panel-screen">
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Intip Layar Laptop (Live)</span>
+              <span class="tag" id="screen-status-tag">STANDBY</span>
+            </div>
+
+            <div class="screen-viewport" id="screen-viewport">
+              <div class="screen-placeholder" id="screen-placeholder">
+                Ketuk <strong>Mulai Live</strong> untuk memantau layar Linux Mint secara langsung di Safari, atau ketuk <strong>Snapshot</strong>.
+              </div>
+              <img id="screen-img" class="screen-img hidden" alt="Layar Laptop Live" />
+            </div>
+
+            <div class="r-power-quick">
+              <button class="btn btn-primary r-ctrl-btn" id="btn-screen-live" type="button">Mulai Live</button>
+              <button class="btn r-ctrl-btn" id="btn-screen-snap" type="button">Snapshot</button>
+            </div>
+
+            <div class="screen-controls-row">
+              <div class="r-fps-chips" id="r-fps-chips">
+                <button class="delay-chip" data-fps="2" type="button">2 FPS</button>
+                <button class="delay-chip active" data-fps="5" type="button">5 FPS</button>
+                <button class="delay-chip" data-fps="8" type="button">8 FPS</button>
+              </div>
+              <a class="btn btn-sm" id="btn-screen-dl" href="/api/remote/screen/snapshot?download=1">Simpan JPG</a>
+            </div>
+
+            <label class="toggle" style="margin-top:2px">
+              <input type="checkbox" id="toggle-screen-tap" />
+              <span class="toggle-track"></span>
+              <span class="toggle-label">Tap pada layar live untuk klik kursor di laptop</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- SUB-VIEW 3: Touchpad, Presentation Clicker & Remote Keyboard -->
+        <div class="r-subpanel hidden" id="r-panel-touchpad">
+          <!-- Presentation Slide Clicker -->
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Slide Presentasi & Shortcut</span>
+              <span class="tag">CLICKER</span>
+            </div>
+            <div class="r-power-quick">
+              <button class="btn r-ctrl-btn" data-rkey="left" type="button">◀ Slide Prev</button>
+              <button class="btn btn-primary r-ctrl-btn" data-rkey="right" type="button">Slide Next ▶</button>
+            </div>
+            <div class="r-key-row">
+              <button class="btn btn-sm" data-rkey="f5" type="button">F5 Start</button>
+              <button class="btn btn-sm" data-rkey="fullscreen" type="button">Full (F)</button>
+              <button class="btn btn-sm" data-rkey="space" type="button">Space</button>
+              <button class="btn btn-sm" data-rkey="escape" type="button">Esc</button>
+            </div>
+          </div>
+
+          <!-- Precision Dark Trackpad Surface -->
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label">Trackpad Laptop</span>
+              <span class="tag">GESER · TAP KLIK</span>
+            </div>
+            <div class="trackpad-surface" id="trackpad-surface">
+              <span class="trackpad-hint">Geser jari untuk gerak kursor · Ketuk = Klik Kiri</span>
+            </div>
+            <div class="r-mouse-row">
+              <button class="btn r-ctrl-btn" id="btn-mouse-left" type="button">Klik Kiri</button>
+              <button class="btn r-ctrl-btn" id="btn-mouse-right" type="button">Klik Kanan</button>
+              <button class="btn r-ctrl-btn" id="btn-scroll-up" type="button">▲</button>
+              <button class="btn r-ctrl-btn" id="btn-scroll-down" type="button">▼</button>
+            </div>
+          </div>
+
+          <!-- Remote Keyboard Input -->
+          <div class="remote-card">
+            <span class="m-section-label">Ketik ke Laptop</span>
+            <div class="r-type-row">
+              <input type="text" id="r-type-input" class="r-text-input" placeholder="Ketik teks lalu kirim..." />
+              <button class="btn btn-primary" id="btn-type-send" type="button" style="height:42px;padding:0 14px">Ketik</button>
+            </div>
+            <div class="r-power-quick">
+              <button class="btn btn-sm" data-rkey="enter" type="button" style="height:36px">Enter ↵</button>
+              <button class="btn btn-sm" data-rkey="backspace" type="button" style="height:36px">Backspace ⌫</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Responsive Navigation Bar (Bottom Tab Bar on Mobile/Tablet, Left Sidebar on Desktop >=1024px) -->
+    <nav class="m-tabbar m-tabbar-4" aria-label="Navigasi">
+      <button class="m-tab active" data-mtab="files" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 16 12 12 8 16"></polyline>
+          <line x1="12" y1="12" x2="12" y2="21"></line>
+          <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+        </svg>
+        <span>File</span>
+      </button>
+      <button class="m-tab" data-mtab="gallery" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span>Galeri</span>
+      </button>
+      <button class="m-tab" data-mtab="clipboard" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+        </svg>
+        <span>Clipboard</span>
+      </button>
+      <button class="m-tab" data-mtab="remote" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+          <circle cx="12" cy="9" r="2.2"></circle>
+          <line x1="9" y1="16" x2="15" y2="16"></line>
+        </svg>
+        <span>Remote</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Lightbox Preview (allows long-press Save to Photos on iPhone!) -->
+  <div class="lightbox hidden" id="m-lightbox">
+    <div class="lightbox-bar">
+      <span class="lightbox-title" id="m-lightbox-title"></span>
+      <div style="display:flex;gap:6px">
+        <a class="btn btn-sm btn-primary" id="m-lightbox-dl" href="#">Unduh</a>
+        <button class="btn btn-sm" id="m-lightbox-close" type="button">Tutup</button>
+      </div>
+    </div>
+    <div class="lightbox-body" id="m-lightbox-body"></div>
+  </div>
+
+  <div class="toast-container" id="toasts"></div>
+
+  <script src="/static/mobile.js"></script>
+</body>
+</html>

@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VoltDeck</title>
+  <link rel="stylesheet" href="/static/shared.css" />
+  <link rel="stylesheet" href="/static/desktop.css" />
+</head>
+<body>
+  <!-- Engineer Lightning ("PETIR") Brief Boot Splash -->
+  <div class="boot-splash" id="boot-splash" aria-label="Memuat VoltDeck">
+    <div class="boot-core">
+      <div class="boot-emblem">
+        <svg class="boot-svg" viewBox="0 0 84 84" fill="none" aria-hidden="true">
+          <path class="boot-frame" d="M20 8 H64 L76 20 V64 L64 76 H20 L8 64 V20 Z" />
+          <circle class="boot-ring" cx="42" cy="42" r="29" />
+          <line x1="42" y1="2" x2="42" y2="8" stroke="rgba(147,197,253,0.35)" stroke-width="1.2" />
+          <line x1="42" y1="76" x2="42" y2="82" stroke="rgba(147,197,253,0.35)" stroke-width="1.2" />
+          <line x1="2" y1="42" x2="8" y2="42" stroke="rgba(147,197,253,0.35)" stroke-width="1.2" />
+          <line x1="76" y1="42" x2="82" y2="42" stroke="rgba(147,197,253,0.35)" stroke-width="1.2" />
+          <path class="boot-bolt-fill" d="M46 18 L27 45 H41 L37 66 L57 38 H43 Z" />
+          <path class="boot-bolt-outline" d="M46 18 L27 45 H41 L37 66 L57 38 H43 Z" />
+        </svg>
+      </div>
+      <div class="boot-wordmark">
+        <div class="boot-title">VOLTDECK</div>
+        <div class="boot-spec">STAY CONNECTED ANYWHERE · LINUX ↔ iOS</div>
+      </div>
+      <div class="boot-bar-track">
+        <div class="boot-bar-fill"></div>
+      </div>
+    </div>
+    <div class="boot-copyright">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
+      </svg>
+      <span>© 2026 VoltDeck · Precision Local Transfer & Remote Deck</span>
+    </div>
+  </div>
+
+  <div class="vd-shell" id="drop-zone">
+    <!-- Top Bar -->
+    <header class="vd-topbar">
+      <div class="vd-brand">
+        <div class="vd-brand-orb" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffffff">
+            <path d="M13.5 2L4 14h7l-1.5 8L20 10h-7l.5-8z" />
+          </svg>
+        </div>
+        <span class="vd-brand-name">VOLTDECK</span>
+        <span class="vd-brand-host" id="host-name">—</span>
+      </div>
+
+      <div class="vd-topbar-center">
+        <div class="vd-url-pill" id="copy-url-btn" title="Klik untuk menyalin URL aktif">
+          <span class="dot dot-pulse" id="server-dot"></span>
+          <span class="vd-url-text mono" id="lan-url">http://—</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </div>
+        <select class="vd-iface-select" id="iface-select" title="Pilih Network Interface LAN"></select>
+      </div>
+
+      <div class="vd-topbar-actions">
+        <button class="btn vd-btn-glass" id="btn-open-folder" title="Buka folder hasil terima file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Folder
+        </button>
+        <button class="btn btn-primary vd-btn-send" id="btn-add-files">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Kirim File
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Body: Left Sidebar + Atmospheric Stage -->
+    <div class="vd-body">
+      <aside class="vd-sidebar">
+        <nav class="vd-nav" role="tablist">
+          <button class="vd-nav-item active" data-nav="home" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Home</span>
+          </button>
+          <button class="vd-nav-item" data-nav="files" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16"></polyline>
+              <line x1="12" y1="12" x2="12" y2="21"></line>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+            </svg>
+            <span>Transfer</span>
+            <span class="vd-nav-badge" id="files-count">0</span>
+          </button>
+          <button class="vd-nav-item" data-nav="clipboard" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+            <span>Clipboard</span>
+            <span class="vd-nav-badge" id="clip-count">0</span>
+          </button>
+          <button class="vd-nav-item" data-nav="settings" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Settings</span>
+          </button>
+        </nav>
+
+        <div class="vd-sidebar-foot">
+          <div class="vd-star" aria-hidden="true">✦</div>
+          <div class="vd-tagline mono">
+            <strong>VOLTDECK</strong><br />
+            STAY CONNECTED<br />
+            ANYWHERE
+          </div>
+        </div>
+      </aside>
+
+      <!-- Atmospheric Main Stage -->
+      <main class="vd-stage">
+        <!-- Character Art & Midnight Water Glow Backdrop -->
+        <div class="vd-hero-bg" aria-hidden="true">
+          <div class="vd-glow-orb"></div>
+          <div class="vd-petals">
+            <span class="petal p1"></span>
+            <span class="petal p2"></span>
+            <span class="petal p3"></span>
+            <span class="petal p4"></span>
+            <span class="petal p5"></span>
+          </div>
+          <img class="vd-hero-char" src="/static/hero-character.png" alt="" />
+          <div class="vd-water-sheen"></div>
+        </div>
+
+        <!-- Floating Status Pill Bottom-Right (matches mockup!) -->
+        <div class="vd-status-pill" id="vd-status-pill">
+          <svg class="vd-wave-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round">
+            <line x1="4" y1="10" x2="4" y2="14"></line>
+            <line x1="8" y1="6" x2="8" y2="18"></line>
+            <line x1="12" y1="3" x2="12" y2="21"></line>
+            <line x1="16" y1="7" x2="16" y2="17"></line>
+            <line x1="20" y1="10" x2="20" y2="14"></line>
+          </svg>
+          <span id="vd-status-label">Koneksi Aman & Stabil</span>
+          <span class="vd-status-dot"></span>
+        </div>
+
+        <!-- Live Remote Power Countdown Banner -->
+        <div class="power-banner hidden" id="power-banner">
+          <div class="power-banner-info">
+            <span class="tag" style="color:var(--danger);background:var(--danger-dim);border-color:rgba(248,113,113,0.35)">REMOTE POWER</span>
+            <span id="power-banner-text">Laptop akan dimatikan dalam 15 detik</span>
+          </div>
+          <button class="btn btn-sm btn-danger" id="btn-cancel-power">Batalkan</button>
+        </div>
+
+        <!-- Live Active Streaming Transfers HUD -->
+        <div class="transfers-strip hidden" id="transfers-strip"></div>
+
+        <!-- ==================== VIEW 1: HOME (Exact VoltDeck Mockup Composition) ==================== -->
+        <section class="vd-view" id="view-home">
+          <div class="vd-home-col">
+            <!-- Mode Akses Pills -->
+            <div class="vd-mode-block">
+              <div class="vd-block-label">Mode Akses</div>
+              <div class="vd-mode-pills" id="mode-switch" role="tablist">
+                <button class="vd-mode-pill" data-mode="anywhere" type="button">
+                  <span class="vd-mode-dot"></span>
+                  Anywhere · VPN
+                </button>
+                <button class="vd-mode-pill active" data-mode="offline" type="button">
+                  <span class="vd-mode-dot"></span>
+                  Offline · LAN
+                </button>
+              </div>
+              <span class="hidden" id="mode-badge">OFFLINE</span>
+            </div>
+
+            <!-- Tailscale / Network Live Card -->
+            <div class="vd-card" id="ts-panel">
+              <div class="vd-ts-top">
+                <div class="vd-ts-left">
+                  <span class="dot" id="ts-dot"></span>
+                  <span class="vd-ts-title" id="ts-status-text">Offline · LAN Aktif</span>
+                </div>
+                <button class="vd-ip-chip mono" id="btn-copy-anywhere" title="Salin alamat aktif">
+                  <span id="anywhere-url-text">—</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+                <div class="vd-signal-bars" id="btn-ts-refresh" title="Klik untuk cek ulang status Tailscale">
+                  <span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+              <div class="ts-hint hidden" id="ts-hint">
+                Jalankan <code>sudo tailscale up</code> di terminal & aktifkan Tailscale di iPhone.
+              </div>
+              <div class="vd-ts-bottom" id="ts-meta">
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-anywhere-power" checked />
+                  <span class="toggle-track"></span>
+                  <span class="toggle-label" style="color:var(--text-primary);font-size:12.5px">Izinkan Remote Power via VPN</span>
+                </label>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#60A5FA" aria-hidden="true">
+                  <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- QR Pairing Card (Side-by-side just like mockup!) -->
+            <div class="vd-card vd-qr-card-wrap">
+              <div class="vd-card-head">
+                <div class="vd-card-title-row">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                  <span id="qr-section-title">QR Pairing (LAN)</span>
+                </div>
+                <label class="toggle" id="wrap-qr-pin" title="Sertakan PIN di QR (hanya mode Offline)">
+                  <input type="checkbox" id="toggle-qr-pin" />
+                  <span class="toggle-track"></span>
+                  <span class="toggle-label">Auto-PIN</span>
+                </label>
+              </div>
+
+              <div class="vd-qr-body">
+                <div class="vd-qr-box">
+                  <img id="qr-img" alt="QR Code VoltDeck" />
+                </div>
+                <div class="vd-qr-info">
+                  <div class="vd-qr-heading">Scan QR Code</div>
+                  <div class="vd-qr-desc" id="qr-caption">Pindai dengan Kamera iPhone untuk membuka VoltDeck di Safari.</div>
+                  <button class="btn vd-btn-glass btn-sm" id="btn-download-qr" type="button" style="width:100%;margin-top:4px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download QR
+                  </button>
+                  <div class="mdns-row hidden" id="mdns-row">
+                    <button class="mdns-pill" id="btn-copy-mdns" title="Alamat tetap .local — klik untuk salin">
+                      <span class="mdns-badge">.LOCAL</span>
+                      <span class="mdns-url" id="mdns-url">—</span>
+                    </button>
+                    <label class="toggle" title="Gunakan .local pada QR">
+                      <input type="checkbox" id="toggle-qr-mdns" />
+                      <span class="toggle-track"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6-Digit Security PIN Card -->
+            <div class="vd-card">
+              <div class="vd-card-head">
+                <div class="vd-card-title-row">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <span>PIN Keamanan 6 Digit</span>
+                </div>
+                <button class="btn btn-sm btn-ghost" id="btn-copy-pin" title="Salin PIN">
+                  Salin
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="pin-grid" id="pin-grid" aria-label="PIN 6 Digit">
+                <div class="pin-digit">-</div>
+                <div class="pin-digit">-</div>
+                <div class="pin-digit">-</div>
+                <div class="pin-sep">-</div>
+                <div class="pin-digit">-</div>
+                <div class="pin-digit">-</div>
+                <div class="pin-digit">-</div>
+              </div>
+              <div class="pin-controls">
+                <button class="btn vd-btn-glass" id="btn-rotate-pin" style="flex:1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                  Acak PIN
+                </button>
+                <button class="btn btn-danger" id="btn-rotate-revoke" style="flex:1" title="Acak PIN & putuskan semua sesi">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                  Reset Sesi
+                </button>
+              </div>
+            </div>
+
+            <!-- Connected Devices Expandable Pill Card -->
+            <div class="vd-card vd-devices-card">
+              <button class="vd-devices-toggle" id="btn-toggle-devices" type="button">
+                <div class="vd-ts-left">
+                  <span class="dot"></span>
+                  <span style="font-weight:500;color:var(--text-primary)">Perangkat Terhubung</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="vd-count-pill mono" id="devices-count">0</span>
+                  <svg id="devices-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </div>
+              </button>
+              <div class="vd-devices-drawer" id="devices-drawer">
+                <div class="devices-list" id="devices-list">
+                  <div class="empty-inline">MENUNGGU KONEKSI PERANGKAT</div>
+                </div>
+                <div id="trusted-wrap" class="hidden" style="margin-top:10px">
+                  <div class="vd-sub-label">
+                    <span>Perangkat Terpercaya</span>
+                    <span class="tag tag-in" id="trusted-count">0</span>
+                  </div>
+                  <div class="devices-list" id="trusted-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 2: TRANSFER FILES ==================== -->
+        <section class="vd-view hidden" id="view-files">
+          <div class="vd-glass-panel">
+            <div class="files-toolbar">
+              <div class="filter-pills">
+                <button class="filter-pill active" data-filter="all">Semua</button>
+                <button class="filter-pill" data-filter="outbound">Linux → iOS</button>
+                <button class="filter-pill" data-filter="inbound">iOS → Linux</button>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm vd-btn-glass" id="btn-paste-shot" title="Kirim gambar/screenshot di clipboard Linux Mint (Ctrl+V)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  Paste Screenshot
+                </button>
+                <button class="btn btn-sm btn-ghost" id="btn-clear-files">Bersihkan</button>
+              </div>
+            </div>
+
+            <div class="drop-strip" id="drop-strip">
+              <div class="drop-strip-left">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span><strong>Seret file dari Nemo ke sini</strong> atau klik untuk dibagikan langsung ke Safari iOS</span>
+              </div>
+              <span class="tag tag-out">ZERO-COPY STREAM</span>
+            </div>
+
+            <div class="files-scroll" id="files-list"></div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 3: SHARED CLIPBOARD ==================== -->
+        <section class="vd-view hidden" id="view-clipboard">
+          <div class="vd-glass-panel">
+            <div class="clipboard-wrap">
+              <div class="clip-bar">
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-clip-sync" checked />
+                  <span class="toggle-track"></span>
+                  <span class="toggle-label" style="color:var(--text-primary)">Auto-Sync Clipboard Linux Mint (Ctrl+C otomatis ke iOS)</span>
+                </label>
+                <button class="btn btn-sm btn-ghost" id="btn-clear-clip">Hapus Riwayat</button>
+              </div>
+
+              <div class="clip-compose">
+                <textarea
+                  id="clip-input"
+                  class="clip-textarea"
+                  placeholder="Ketik atau tempel teks, tautan, atau potongan kode untuk dikirim instan ke iPhone..."
+                ></textarea>
+                <div class="clip-compose-foot">
+                  <span class="clip-hint">Ctrl + Enter untuk kirim cepat</span>
+                  <button class="btn btn-sm btn-primary" id="btn-send-clip">Kirim ke iPhone</button>
+                </div>
+              </div>
+
+              <div class="clip-list" id="clip-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 4: SETTINGS ==================== -->
+        <section class="vd-view hidden" id="view-settings">
+          <div class="vd-home-col" style="max-width:520px">
+            <div class="vd-card vd-settings-card">
+              <div class="vd-card-title-row" style="margin-bottom:10px">
+                <span>Kontrol & Sistem</span>
+              </div>
+              <div class="vd-setting-row">
+                <div>
+                  <div class="vd-setting-title">Izinkan Remote Control dari iOS / Web</div>
+                  <div class="vd-setting-sub">Media, volume, kecerahan, aplikasi, live screen, touchpad & daya</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-remote" checked />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="vd-setting-row">
+                <div>
+                  <div class="vd-setting-title">Standby Autostart saat Login</div>
+                  <div class="vd-setting-sub">Otomatis siaga di system tray (hemat RAM tanpa membuka jendela)</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-autostart" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="vd-setting-row">
+                <div>
+                  <div class="vd-setting-title">Sembunyi ke Tray saat Ditutup (X)</div>
+                  <div class="vd-setting-sub">Server tetap aktif di latar belakang agar selalu bisa di-remote</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-min-tray" checked />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              <div class="vd-setting-row">
+                <div>
+                  <div class="vd-setting-title">Notifikasi Desktop Linux Mint</div>
+                  <div class="vd-setting-sub">Tampilkan pemberitahuan saat file masuk atau perangkat terhubung</div>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-notify" checked />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="vd-card vd-settings-card">
+              <div class="vd-card-head">
+                <span>Folder Penyimpanan File Masuk</span>
+                <button class="btn btn-sm vd-btn-glass" id="btn-change-dir">Ubah Folder</button>
+              </div>
+              <div class="path-box" style="margin-top:8px">
+                <span class="path-text" id="receive-dir-text">~/Downloads/LANShare</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Drag Overlay -->
+        <div class="drop-overlay hidden" id="drop-overlay">
+          <div class="drop-overlay-title">Lepaskan File untuk Dibagikan</div>
+          <div class="drop-overlay-sub">File akan tersedia instan di Safari iOS via VoltDeck</div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Hidden file input fallback -->
+  <input type="file" id="fallback-file-input" class="hidden" multiple />
+
+  <!-- Preview Lightbox -->
+  <div class="lightbox hidden" id="lightbox">
+    <div class="lightbox-bar">
+      <span class="lightbox-title" id="lightbox-title"></span>
+      <button class="btn btn-sm" id="lightbox-close">Tutup</button>
+    </div>
+    <div class="lightbox-body" id="lightbox-body"></div>
+  </div>
+
+  <div class="toast-container" id="toasts"></div>
+
+  <script src="/static/desktop.js"></script>
+</body>
+</html>

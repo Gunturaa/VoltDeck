@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=VoltDeck
+GenericName=Transfer File, Shared Clipboard & Remote Control Deck
+Comment=Transfer file 2 arah streaming, shared clipboard, galeri, live screen & remote laptop Linux Mint ↔ iOS
+Exec=/usr/bin/python3 @APP_DIR@/lanshare.py %F
+Icon=voltdeck
+Terminal=false
+Categories=Network;Utility;FileTransfer;
+Keywords=VoltDeck;AirDrop;Remote;iPhone;Safari;QR;LAN;Tailscale;Transfer;Clipboard;
+StartupNotify=true
+StartupWMClass=voltdeck
+SingleMainWindow=true
