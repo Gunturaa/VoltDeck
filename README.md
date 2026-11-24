@@ -1,18 +1,26 @@
 <div align="center">
 
-<img src="assets/voltdeck-banner.svg" alt="VoltDeck Banner Logo" width="100%" />
+<img src="assets/voltdeck-banner.png" alt="VoltDeck Banner" width="100%" />
 
 <br />
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3B82F6?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![GTK3 + WebKit2](https://img.shields.io/badge/Desktop-GTK3%20%2B%20WebKit2-22C55E?style=flat-square)](https://webkitgtk.org/)
 [![Platform](https://img.shields.io/badge/OS-Linux%20Mint%20%2F%20Ubuntu-60A5FA?style=flat-square&logo=linuxmint&logoColor=white)](https://linuxmint.com/)
-[![Zero Mobile App](https://img.shields.io/badge/Client-Safari%20%2F%20Any%20Browser-0EA5E9?style=flat-square&logo=safari&logoColor=white)](#)
+[![Zero Mobile App](https://img.shields.io/badge/Clients-iOS%20%7C%20Android%20%7C%20Web-0EA5E9?style=flat-square)](#)
 
 **English** · [Bahasa Indonesia](README.id.md)
 
-*Two-way streaming file transfer, real-time shared clipboard, laptop photo gallery & webcam capture, live MJPEG screen view, and full remote desktop control right from iPhone Safari, iPad, or any browser — with **Offline Mode (LAN Only)** and **Anywhere Mode (Tailscale Private VPN)**.*
+*Two-way streaming file transfer, real-time shared clipboard, laptop photo gallery & webcam capture, live MJPEG screen view, and full remote desktop control right from **iOS, Android, iPad, or any desktop browser** (Safari, Chrome, Firefox, Edge — zero mobile app install) — with **Offline Mode (LAN Only)** and **Anywhere Mode (Tailscale Private VPN)**.*
 
+</div>
+
+---
+
+## 🖥️ Interface Preview
+
+<div align="center">
+  <img src="assets/voltdeck-preview.jpg" alt="VoltDeck Desktop UI Preview" width="92%" />
 </div>
 
 ---
@@ -20,17 +28,17 @@
 ## ✨ Features
 
 ### 🔄 Two-Way Streaming File Transfer
-- **iOS / Web → Linux Mint:** Chunked binary streaming (`256 KB` chunks) directly to `~/Downloads/LANShare` with constant low RAM usage, live progress bar, transfer speed (MB/s), and cancel support.
-- **Linux Mint → iOS / Web:** Zero-copy file sharing with HTTP `Range` (`206 Partial Content`) support, image/video lightbox preview, automatic thumbnails, and on-the-fly streaming `.zip` batch downloads.
+- **Phone / Browser → Linux Mint:** Chunked binary streaming (`256 KB` chunks) directly to `~/Downloads/LANShare` with constant low RAM usage, live progress bar, transfer speed (MB/s), and cancel support.
+- **Linux Mint → Phone / Browser:** Zero-copy file sharing with HTTP `Range` (`206 Partial Content`) support, image/video lightbox preview, automatic thumbnails, and on-the-fly streaming `.zip` batch downloads.
 - **Native Linux Mint Integration:**
   - Drag-and-drop directly from **Nemo** onto the VoltDeck window.
   - Nemo right-click context action: **`Kirim ke iPhone (VoltDeck)`**.
-  - **Paste Screenshot (`Ctrl+V`)** directly from the Linux Mint clipboard straight to iOS Safari.
-  - Dedicated **Camera** button on iPhone Safari to snap documents/notes straight to your laptop.
+  - **Paste Screenshot (`Ctrl+V`)** directly from the Linux Mint clipboard straight to connected devices.
+  - Dedicated **Camera** button on mobile browsers (iOS & Android) to snap documents/notes straight to your laptop.
 
 ### 📋 Two-Way Shared Clipboard + Open Link on Laptop
-- Automatic Linux Mint `Gtk.Clipboard` sync to Safari iOS (with HTTP-compatible one-tap copy fallback).
-- Paste any WhatsApp message or link on iPhone → tap **`Buka di Laptop`** to open safe `http(s)://` URLs directly in your default Linux Mint browser.
+- Automatic Linux Mint `Gtk.Clipboard` sync to iOS, Android, and desktop browsers (with HTTP-compatible one-tap copy fallback).
+- Paste any WhatsApp message or link on your phone → tap **`Buka di Laptop`** to open safe `http(s)://` URLs directly in your default Linux Mint browser.
 
 ### 🖼️ Laptop Gallery & Instant Capture
 - Browse and pull images directly from laptop folders (`Pictures`, `Downloads`, `Desktop`, `Documents`, `LANShare`) in a responsive thumbnail grid.
@@ -41,14 +49,14 @@
 - **Media & Audio:** Play/Pause, Next/Previous, and `±10s` Seek via Session D-Bus **MPRIS2** (YouTube, Spotify, VLC, Celluloid), plus volume slider and **Audio Output Sink Switcher** (Speakers ↔ Headset/Bluetooth via `pactl`).
 - **Display & Safe Power Controls:** Brightness slider, **Display Off** (`DPMS`), **Lock Screen**, **Sleep**, **Restart**, and **Shutdown** protected by 2-step confirmation, selectable timer (`15s / 15m / 30m / 60m`), and a live cancel button on both phone and desktop.
 - **App Launcher:** Launch installed Linux Mint desktop apps (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, etc.) via a strict binary allowlist.
-- **Live Screen View (MJPEG):** Stream your Linux Mint screen live in Safari (`2 / 5 / 8 FPS`) with optional **Tap-to-Click** cursor interaction.
+- **Live Screen View (MJPEG):** Stream your Linux Mint screen live in Safari, Chrome, or Firefox (`2 / 5 / 8 FPS`) with optional **Tap-to-Click** cursor interaction.
 - **Touchpad & Presentation Clicker:** Touch/mouse trackpad via X11 `XTest`, presentation keys (`Prev / Next / F5 / Esc`), and remote keyboard typing.
 
 ### 🌐 Dual-Mode Access & Security
 - **`Offline · LAN` (Default):** Strictly allows local Wi-Fi/LAN clients (`192.168.x.x`, `10.x.x.x`, `172.16–31.x.x`, `.local`) and rejects external/VPN traffic (`403 Forbidden`).
-- **`Anywhere · VPN` (Tailscale):** Control and transfer from anywhere (4G/5G) over your private end-to-end encrypted Tailscale mesh — raw public internet IPs remain strictly blocked.
+- **`Anywhere · VPN` (Tailscale):** Control and transfer from anywhere (4G/5G) over your private end-to-end encrypted Tailscale mesh (available for Linux, iOS, Android, Windows & macOS) — raw public internet IPs remain strictly blocked.
 - **6-Digit Security PIN:** Cryptographically random PIN (`secrets`), constant-time verification, brute-force lockout (60s after 5 failed attempts), instant PIN rotation, and session revocation.
-- **Trusted Devices:** Approve your iPhone as a **Trusted Device** (stored as SHA-256 hash only in `~/.config/lanshare/trusted_devices.json`, `0600`) for seamless auto-login across laptop restarts.
+- **Trusted Devices:** Approve your iOS/Android device as a **Trusted Device** (stored as SHA-256 hash only in `~/.config/lanshare/trusted_devices.json`, `0600`) for seamless auto-login across laptop restarts.
 - **GTK3 Single-Instance & Low-RAM Tray Standby:** `--tray` standby mode stays ready in the Linux Mint system tray without initializing WebKit2 until the window is opened.
 - **All-Device Responsive Web UI:** Midnight Sapphire UI that adapts seamlessly across phones (bottom nav bar), tablets (2–3 column grids), and desktop browsers (left sidebar + multi-column dashboard).
 
