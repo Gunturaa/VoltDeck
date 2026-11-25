@@ -614,6 +614,48 @@ class LANShareEndToEndTests(unittest.TestCase):
         self.assertEqual(r_icon.status_code, 200)
         self.assertEqual(r_icon.headers["Content-Type"], "image/png")
 
+    def test_13_file_explorer_task_monitor_and_privacy_mode(self) -> None:
+        sess = self._auth_mobile_session()
+
+        # 1. File Explorer lists files inside sandboxed LANShare root & streams downloads
+        sub = self.receive_dir / "docs_sub"
+        sub.mkdir(parents=True, exist_ok=True)
+        pdf_file = sub / "tugas_akhir.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4 sample voltdeck content")
+
+        r_exp = sess.get(f"{self.base_url}/api/explorer?root=LANShare&path=docs_sub", timeout=5)
+        self.assertEqual(r_exp.status_code, 200)
+        names = [e["name"] for e in r_exp.json()["entries"]]
+        self.assertIn("tugas_akhir.pdf", names)
+
+        r_dl = sess.get(f"{self.base_url}/api/explorer/download?root=LANShare&path=docs_sub/tugas_akhir.pdf", timeout=5)
+        self.assertEqual(r_dl.status_code, 200)
+        self.assertEqual(r_dl.content, b"%PDF-1.4 sample voltdeck content")
+
+        # Path traversal & dotfile escape strictly blocked (404)
+        r_trav = sess.get(f"{self.base_url}/api/explorer/download?root=LANShare&path=../../etc/passwd", timeout=5)
+        self.assertEqual(r_trav.status_code, 404)
+
+        # 2. On-demand Task Monitor lists processes & blocks killing PID 1 / self PID
+        r_procs = sess.get(f"{self.base_url}/api/remote/processes", timeout=5)
+        self.assertEqual(r_procs.status_code, 200)
+        self.assertIsInstance(r_procs.json()["processes"], list)
+        self.assertEqual(
+            sess.post(f"{self.base_url}/api/remote/processes/kill", json={"pid": 1}, timeout=5).status_code,
+            400,
+        )
+        self.assertEqual(
+            sess.post(f"{self.base_url}/api/remote/processes/kill", json={"pid": os.getpid()}, timeout=5).status_code,
+            400,
+        )
+
+        # 3. 1-Tap Privacy Mode executes mute + lock + display off cleanly
+        r_priv = sess.post(f"{self.base_url}/api/remote/privacy-mode", json={}, timeout=5)
+        self.assertEqual(r_priv.status_code, 200)
+        self.assertTrue(r_priv.json()["ok"])
+        self.assertIn("locked", r_priv.json()["actions"])
+        self.assertIn("display_off", r_priv.json()["actions"])
+
 
 if __name__ == "__main__":
     unittest.main()

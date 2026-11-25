@@ -27,6 +27,16 @@
     galleryFolder: 'all',
     galleryImages: [],
     galleryFolders: [],
+    gallerySubTab: 'photos',
+    expRoot: '',
+    expPath: '',
+    expParent: null,
+    expRoots: [],
+    expEntries: [],
+    expQuery: '',
+    processes: [],
+    armedKillPid: null,
+    armedKillTimer: null,
     apps: [],
     tab: 'files',
     sse: null,
@@ -434,6 +444,107 @@
     img.alt = title;
     body.appendChild(img);
     $('m-lightbox').classList.remove('hidden');
+  }
+
+  // --- Sandboxed Laptop File Explorer ---
+
+  async function refreshExplorer(root = state.expRoot, relPath = state.expPath) {
+    if (!state.authenticated) return;
+    try {
+      const url = `/api/explorer?root=${encodeURIComponent(root || '')}&path=${encodeURIComponent(relPath || '')}`;
+      const res = await fetch(url, { credentials: 'same-origin', headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      state.expRoots = data.roots || [];
+      state.expRoot = data.root || '';
+      state.expPath = data.path || '';
+      state.expParent = data.parent;
+      state.expEntries = data.entries || [];
+      renderExplorer();
+    } catch {}
+  }
+
+  function renderExplorer() {
+    $('exp-roots').innerHTML = state.expRoots
+      .map((r) => {
+        const active = r === state.expRoot ? 'active' : '';
+        return `<button class="folder-chip ${active}" data-exp-root="${escHtml(r)}" type="button">${escHtml(r)}</button>`;
+      })
+      .join('');
+
+    $('exp-path').textContent = state.expPath ? `${state.expRoot}/${state.expPath}` : `${state.expRoot}/`;
+    $('btn-exp-up').classList.toggle('hidden', state.expParent === null || state.expParent === undefined);
+
+    const q = (state.expQuery || '').trim().toLowerCase();
+    const list = state.expEntries.filter((e) => !q || e.name.toLowerCase().includes(q));
+    const el = $('exp-list');
+    if (list.length === 0) {
+      el.innerHTML = `<div class="m-empty" style="grid-column:1/-1">${escHtml(tr('explorer_empty'))}</div>`;
+      return;
+    }
+
+    el.innerHTML = list
+      .map((item) => {
+        if (item.is_dir) {
+          return `
+          <div class="m-file-card" data-exp-dir="${escHtml(item.rel_path)}" style="cursor:pointer">
+            <div class="m-thumb"><span class="file-ext" style="color:var(--accent-bright)">DIR</span></div>
+            <div class="m-file-info">
+              <div class="m-file-name">${escHtml(item.name)}</div>
+              <div class="m-file-meta"><span>Folder</span></div>
+            </div>
+            <span class="tag">›</span>
+          </div>`;
+        }
+        const dlUrl = `/api/explorer/download?root=${encodeURIComponent(state.expRoot)}&path=${encodeURIComponent(item.rel_path)}`;
+        return `
+        <div class="m-file-card">
+          <div class="m-thumb"><span class="file-ext">${escHtml(fileExtBadge(item.name, item.kind))}</span></div>
+          <div class="m-file-info">
+            <div class="m-file-name">${escHtml(item.name)}</div>
+            <div class="m-file-meta"><span>${formatBytes(item.size)}</span></div>
+          </div>
+          <a class="btn btn-primary m-dl-btn" href="${dlUrl}">${escHtml(tr('download'))}</a>
+        </div>`;
+      })
+      .join('');
+  }
+
+  // --- On-Demand RAM Task Monitor ---
+
+  async function refreshProcesses() {
+    if (!state.authenticated || !state.remoteEnabled) return;
+    try {
+      const res = await fetch('/api/remote/processes', { credentials: 'same-origin', headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      state.processes = data.processes || [];
+      renderProcesses();
+    } catch {}
+  }
+
+  function renderProcesses() {
+    const el = $('r-proc-list');
+    if (!state.processes || state.processes.length === 0) {
+      el.innerHTML = `<div class="m-empty">${escHtml(tr('task_mon_empty'))}</div>`;
+      return;
+    }
+    el.innerHTML = state.processes
+      .map((p) => {
+        const armed = state.armedKillPid === p.pid;
+        const actionBtn = p.protected
+          ? '<span class="tag">CORE</span>'
+          : `<button class="btn btn-sm btn-danger" data-kill-pid="${p.pid}" type="button">${armed ? 'Confirm?' : escHtml(tr('task_close'))}</button>`;
+        return `
+        <div class="proc-row">
+          <div class="proc-info">
+            <div class="proc-name">${escHtml(p.name)}</div>
+            <div class="proc-meta">${p.ram_mb} MB RAM · PID ${p.pid}</div>
+          </div>
+          ${actionBtn}
+        </div>`;
+      })
+      .join('');
   }
 
   function renderTelemetry(t) {
@@ -956,6 +1067,28 @@
       });
     });
 
+    // Gallery Sub-Tabs (Photos & Camera | File Explorer)
+    document.querySelectorAll('[data-gsub]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.gallerySubTab = btn.dataset.gsub;
+        document.querySelectorAll('[data-gsub]').forEach((b) => b.classList.toggle('active', b === btn));
+        $('g-panel-photos').classList.toggle('hidden', state.gallerySubTab !== 'photos');
+        $('g-panel-explorer').classList.toggle('hidden', state.gallerySubTab !== 'explorer');
+        if (state.gallerySubTab === 'explorer') refreshExplorer(state.expRoot, state.expPath);
+      });
+    });
+
+    $('btn-exp-refresh').addEventListener('click', () => refreshExplorer(state.expRoot, state.expPath));
+    $('btn-exp-up').addEventListener('click', () => {
+      if (state.expParent !== null && state.expParent !== undefined) {
+        refreshExplorer(state.expRoot, state.expParent);
+      }
+    });
+    $('exp-search').addEventListener('input', (e) => {
+      state.expQuery = e.target.value;
+      renderExplorer();
+    });
+
     // Gallery Controls (Webcam Capture, Screen Capture, Folder Filter)
     $('btn-gallery-refresh').addEventListener('click', () => {
       refreshGallery(state.galleryFolder);
@@ -997,10 +1130,20 @@
         $('r-panel-apps').classList.toggle('hidden', state.remoteSubTab !== 'apps');
         $('r-panel-screen').classList.toggle('hidden', state.remoteSubTab !== 'screen');
         $('r-panel-touchpad').classList.toggle('hidden', state.remoteSubTab !== 'touchpad');
+        if (state.remoteSubTab === 'apps') {
+          refreshProcesses();
+        }
         if (state.remoteSubTab !== 'screen') {
           stopScreenLive();
         }
       });
+    });
+
+    $('btn-proc-refresh').addEventListener('click', () => refreshProcesses());
+
+    $('btn-privacy-mode').addEventListener('click', async () => {
+      const data = await postRemote('/api/remote/privacy-mode', {});
+      if (data) toast('Mode Privasi aktif (Pause · Mute · Lock · Screen Off)', 'success');
     });
 
     // File & Camera Pickers
@@ -1415,6 +1558,53 @@
         if (data && data.app) {
           toast(`Membuka ${data.app.name} di laptop`, 'success');
         }
+        return;
+      }
+
+      const quickUrlBtn = e.target.closest('[data-quick-url]');
+      if (quickUrlBtn) {
+        const targetUrl = quickUrlBtn.dataset.quickUrl;
+        const data = await postRemote('/api/open-url', { url: targetUrl });
+        if (data) toast(`Membuka ${quickUrlBtn.textContent} di laptop`, 'success');
+        return;
+      }
+
+      const killBtn = e.target.closest('[data-kill-pid]');
+      if (killBtn) {
+        const pid = Number(killBtn.dataset.killPid);
+        if (state.armedKillPid !== pid) {
+          state.armedKillPid = pid;
+          if (state.armedKillTimer) clearTimeout(state.armedKillTimer);
+          state.armedKillTimer = setTimeout(() => {
+            state.armedKillPid = null;
+            renderProcesses();
+          }, 4000);
+          renderProcesses();
+          return;
+        }
+        state.armedKillPid = null;
+        if (state.armedKillTimer) clearTimeout(state.armedKillTimer);
+        const data = await postRemote('/api/remote/processes/kill', { pid });
+        if (data) {
+          toast(`Ditutup: ${data.name}`, 'success');
+          setTimeout(refreshProcesses, 400);
+        }
+        return;
+      }
+
+      const expRootBtn = e.target.closest('[data-exp-root]');
+      if (expRootBtn) {
+        state.expQuery = '';
+        $('exp-search').value = '';
+        refreshExplorer(expRootBtn.dataset.expRoot, '');
+        return;
+      }
+
+      const expDirBtn = e.target.closest('[data-exp-dir]');
+      if (expDirBtn) {
+        state.expQuery = '';
+        $('exp-search').value = '';
+        refreshExplorer(state.expRoot, expDirBtn.dataset.expDir);
         return;
       }
 

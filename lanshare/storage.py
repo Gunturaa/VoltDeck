@@ -243,6 +243,125 @@ class FileStorageManager:
             return p
         return None
 
+    # --- Safe Sandboxed Laptop File Explorer (On-Demand, Zero Background Cost) ---
+
+    def _explorer_roots(self) -> dict[str, Path]:
+        home = Path.home()
+        candidates = [
+            ("Documents", home / "Documents"),
+            ("Downloads", home / "Downloads"),
+            ("Desktop", home / "Desktop"),
+            ("Pictures", home / "Pictures"),
+            ("Music", home / "Music"),
+            ("Videos", home / "Videos"),
+            ("LANShare", self.receive_dir),
+        ]
+        roots: dict[str, Path] = {}
+        for label, p in candidates:
+            if p.is_dir():
+                roots[label] = p.resolve()
+        return roots
+
+    def resolve_explorer_path(self, root_name: str, rel_path: str = "") -> Optional[tuple[str, Path, Path]]:
+        """Safely resolve (root_name, root_dir, target_path) preventing traversal or symlink escape."""
+        roots = self._explorer_roots()
+        if not roots:
+            return None
+        if root_name not in roots:
+            return None
+        root_dir = roots[root_name]
+        cleaned = (rel_path or "").replace("\\", "/").strip("/")
+        if cleaned:
+            parts = [p for p in cleaned.split("/") if p]
+            if any(p in (".", "..") or p.startswith(".") for p in parts):
+                return None
+            candidate = (root_dir / Path(*parts)).resolve()
+        else:
+            candidate = root_dir
+
+        try:
+            if not candidate.is_relative_to(root_dir):
+                return None
+        except AttributeError:  # pragma: no cover
+            if root_dir not in candidate.parents and candidate != root_dir:
+                return None
+
+        if not candidate.exists():
+            return None
+        return root_name, root_dir, candidate
+
+    def list_explorer_dir(self, root_name: str = "", rel_path: str = "", limit: int = 200) -> dict:
+        """List non-hidden folders and files inside an allowlisted user folder."""
+        roots = self._explorer_roots()
+        root_names = list(roots.keys())
+        if not root_names:
+            return {"roots": [], "root": "", "path": "", "parent": None, "entries": []}
+
+        chosen_root = root_name if root_name in roots else root_names[0]
+        resolved = self.resolve_explorer_path(chosen_root, rel_path)
+        if not resolved:
+            resolved = (chosen_root, roots[chosen_root], roots[chosen_root])
+        chosen_root, root_dir, target_dir = resolved
+        if not target_dir.is_dir():
+            target_dir = root_dir
+
+        cur_rel = "" if target_dir == root_dir else str(target_dir.relative_to(root_dir)).replace("\\", "/")
+        parent_rel: Optional[str] = None
+        if cur_rel:
+            parent_p = str(Path(cur_rel).parent).replace("\\", "/")
+            parent_rel = "" if parent_p == "." else parent_p
+
+        folders: list[dict] = []
+        files: list[dict] = []
+        try:
+            with os.scandir(target_dir) as it:
+                for entry in it:
+                    if entry.name.startswith("."):
+                        continue
+                    try:
+                        full = Path(entry.path).resolve()
+                        if not full.is_relative_to(root_dir):
+                            continue
+                        st = entry.stat()
+                    except OSError:
+                        continue
+                    rel_item = f"{cur_rel}/{entry.name}" if cur_rel else entry.name
+                    if entry.is_dir():
+                        folders.append(
+                            {
+                                "name": entry.name,
+                                "rel_path": rel_item,
+                                "is_dir": True,
+                                "size": 0,
+                                "kind": "folder",
+                                "modified_at": st.st_mtime,
+                            }
+                        )
+                    elif entry.is_file():
+                        mime, _ = mimetypes.guess_type(entry.name)
+                        files.append(
+                            {
+                                "name": entry.name,
+                                "rel_path": rel_item,
+                                "is_dir": False,
+                                "size": st.st_size,
+                                "kind": classify_file_kind(entry.name, mime or ""),
+                                "modified_at": st.st_mtime,
+                            }
+                        )
+        except OSError:
+            pass
+
+        folders.sort(key=lambda x: x["name"].lower())
+        files.sort(key=lambda x: x["modified_at"], reverse=True)
+        return {
+            "roots": root_names,
+            "root": chosen_root,
+            "path": cur_rel,
+            "parent": parent_rel,
+            "entries": (folders + files)[:limit],
+        }
+
     def get_gallery_thumbnail_jpeg(self, gid: str) -> Optional[bytes]:
         with self._lock:
             if gid in self._gallery_thumb_cache:

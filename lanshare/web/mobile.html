@@ -206,41 +206,66 @@
       </div>
     </section>
 
-    <!-- Gallery Tab (Ambil Gambar, Foto Webcam, & Screenshot dari Laptop) -->
+    <!-- Gallery & File Explorer Tab (Ambil Gambar, Webcam, Screenshot, & Jelajah File Laptop) -->
     <section class="m-content hidden" id="m-view-gallery">
-      <div class="send-card">
-        <div class="send-card-head">
-          <span class="m-section-label" data-i18n="pull_instant_title">Ambil Gambar Instan dari Laptop</span>
-          <span class="tag">DIRECT PULL</span>
+      <div class="r-subtabs" style="grid-template-columns:1fr 1fr" role="tablist">
+        <button class="r-subtab active" data-gsub="photos" data-i18n="gal_sub_photos" type="button">Foto & Kamera</button>
+        <button class="r-subtab" data-gsub="explorer" data-i18n="gal_sub_explorer" type="button">File Explorer</button>
+      </div>
+
+      <!-- Sub-View A: Photos, Webcam & Screenshot -->
+      <div id="g-panel-photos" style="display:flex;flex-direction:column;gap:14px">
+        <div class="send-card">
+          <div class="send-card-head">
+            <span class="m-section-label" data-i18n="pull_instant_title">Ambil Gambar Instan dari Laptop</span>
+            <span class="tag">DIRECT PULL</span>
+          </div>
+          <div class="r-power-quick">
+            <button class="btn btn-primary send-btn" id="btn-cap-webcam" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              <span data-i18n="btn_webcam">Foto Webcam</span>
+            </button>
+            <button class="btn send-btn" id="btn-cap-screen" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+              <span data-i18n="btn_screenshot">Screenshot Layar</span>
+            </button>
+          </div>
         </div>
-        <div class="r-power-quick">
-          <button class="btn btn-primary send-btn" id="btn-cap-webcam" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-              <circle cx="12" cy="13" r="4"></circle>
-            </svg>
-            <span data-i18n="btn_webcam">Foto Webcam</span>
-          </button>
-          <button class="btn send-btn" id="btn-cap-screen" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            <span data-i18n="btn_screenshot">Screenshot Layar</span>
-          </button>
+
+        <div>
+          <div class="section-row">
+            <span class="m-section-label" data-i18n="laptop_gallery_title">Galeri Folder Laptop</span>
+            <button class="btn btn-sm" id="btn-gallery-refresh" data-i18n="refresh" type="button">Muat Ulang</button>
+          </div>
+          <div class="gallery-folders" id="gallery-folders"></div>
+          <div class="gallery-grid" id="gallery-grid">
+            <div class="m-empty" style="grid-column:1/-1">...</div>
+          </div>
         </div>
       </div>
 
-      <div>
-        <div class="section-row">
-          <span class="m-section-label" data-i18n="laptop_gallery_title">Galeri Folder Laptop</span>
-          <button class="btn btn-sm" id="btn-gallery-refresh" data-i18n="refresh" type="button">Muat Ulang</button>
+      <!-- Sub-View B: Sandboxed Laptop File Explorer (PDF, DOCX, ZIP, dll.) -->
+      <div id="g-panel-explorer" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+        <div class="send-card">
+          <div class="send-card-head">
+            <span class="m-section-label" data-i18n="explorer_title">Jelajah File Laptop</span>
+            <button class="btn btn-sm" id="btn-exp-refresh" data-i18n="refresh" type="button">Muat Ulang</button>
+          </div>
+          <div class="gallery-folders" id="exp-roots" style="padding-bottom:2px"></div>
+          <div class="exp-bar">
+            <button class="btn btn-sm hidden" id="btn-exp-up" data-i18n="explorer_up" type="button">← Kembali</button>
+            <span class="exp-path mono" id="exp-path">/</span>
+          </div>
+          <input type="text" id="exp-search" class="r-text-input" data-i18n-placeholder="explorer_search" placeholder="Cari nama file di folder ini..." />
         </div>
-        <div class="gallery-folders" id="gallery-folders"></div>
-        <div class="gallery-grid" id="gallery-grid">
-          <div class="m-empty" style="grid-column:1/-1">...</div>
-        </div>
+        <div class="m-file-list" id="exp-list"></div>
       </div>
     </section>
 
@@ -411,6 +436,13 @@
               <span class="m-section-label" data-i18n="power_title">Kontrol Daya Laptop</span>
               <span class="tag">2-STEP</span>
             </div>
+            <button class="btn r-ctrl-btn" id="btn-privacy-mode" type="button" style="border-color:rgba(96,165,250,0.42);background:rgba(59,130,246,0.14);color:#dbeafe">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+              <span data-i18n="privacy_mode_btn">Mode Privasi (Pause · Mute · Kunci · Layar Off)</span>
+            </button>
+
             <div class="r-power-quick">
               <button class="btn r-ctrl-btn" id="btn-power-lock" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -456,7 +488,7 @@
           </div>
         </div>
 
-        <!-- SUB-VIEW 1B: App Launcher (Buka Aplikasi Laptop dari iOS/Web) -->
+        <!-- SUB-VIEW 1B: App Launcher, Quick Web Shortcuts & RAM Task Monitor -->
         <div class="r-subpanel hidden" id="r-panel-apps">
           <div class="remote-card">
             <div class="send-card-head">
@@ -465,6 +497,30 @@
             </div>
             <div class="apps-grid" id="r-apps-grid">
               <div class="m-empty" style="grid-column:1/-1">...</div>
+            </div>
+          </div>
+
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label" data-i18n="quick_web_title">Buka Cepat di Browser Laptop</span>
+              <span class="tag">1-TAP WEB</span>
+            </div>
+            <div class="quick-web-chips">
+              <button class="folder-chip" data-quick-url="https://www.youtube.com" type="button">YouTube</button>
+              <button class="folder-chip" data-quick-url="https://github.com" type="button">GitHub</button>
+              <button class="folder-chip" data-quick-url="https://web.whatsapp.com" type="button">WhatsApp Web</button>
+              <button class="folder-chip" data-quick-url="https://chatgpt.com" type="button">ChatGPT</button>
+              <button class="folder-chip" data-quick-url="https://mail.google.com" type="button">Gmail</button>
+            </div>
+          </div>
+
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label" data-i18n="task_mon_title">Task Monitor RAM (On-Demand)</span>
+              <button class="btn btn-sm" id="btn-proc-refresh" data-i18n="refresh" type="button">Muat Ulang</button>
+            </div>
+            <div class="proc-list" id="r-proc-list">
+              <div class="m-empty" data-i18n="task_mon_empty">Ketuk Muat Ulang untuk cek pemakan RAM terbesar.</div>
             </div>
           </div>
         </div>

@@ -770,6 +770,14 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "telemetry": self.state.remote.get_telemetry()})
             return
 
+        if path == "/api/remote/processes":
+            if not self.state.config.remote_control_enabled:
+                self._send_error_json(HTTPStatus.FORBIDDEN, "Remote Control sedang dinonaktifkan.")
+                return
+            procs = self.state.remote.list_top_processes(limit=8)
+            self._send_json({"ok": True, "processes": procs})
+            return
+
         if path == "/api/remote/screen/snapshot":
             if not self.state.config.remote_control_enabled:
                 self._send_error_json(HTTPStatus.FORBIDDEN, "Remote Control sedang dinonaktifkan.")
@@ -821,6 +829,23 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
             folder = query.get("folder", ["all"])[0]
             data = self.state.storage.scan_laptop_images(folder_filter=folder)
             self._send_json({"ok": True, **data})
+            return
+
+        if path == "/api/explorer":
+            root_name = query.get("root", [""])[0]
+            rel_path = query.get("path", [""])[0]
+            data = self.state.storage.list_explorer_dir(root_name=root_name, rel_path=rel_path)
+            self._send_json({"ok": True, **data})
+            return
+
+        if path == "/api/explorer/download":
+            root_name = query.get("root", [""])[0]
+            rel_path = query.get("path", [""])[0]
+            resolved = self.state.storage.resolve_explorer_path(root_name, rel_path)
+            if not resolved or not resolved[2].is_file():
+                self._send_error_json(HTTPStatus.NOT_FOUND, "File tidak ditemukan atau akses ditolak.")
+                return
+            self._stream_raw_path(resolved[2], inline=False)
             return
 
         m_gal = re.match(r"^/api/gallery/([a-f0-9]+)/(thumb|download|preview)$", path)
@@ -1297,6 +1322,24 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
             res = self.state.remote.launch_app(app_id, requested_by=peer)
             if not res.get("ok"):
                 self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal membuka aplikasi")))
+                return
+            self._send_json(res)
+            return
+
+        if path == "/api/remote/privacy-mode":
+            res = self.state.remote.activate_privacy_mode(requested_by=peer)
+            self._send_json(res)
+            return
+
+        if path == "/api/remote/processes/kill":
+            try:
+                pid = int(body.get("pid", 0))
+            except (TypeError, ValueError):
+                self._send_error_json(HTTPStatus.BAD_REQUEST, "PID tidak valid.")
+                return
+            res = self.state.remote.terminate_user_process(pid, requested_by=peer)
+            if not res.get("ok"):
+                self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal menutup proses")))
                 return
             self._send_json(res)
             return

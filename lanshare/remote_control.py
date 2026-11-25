@@ -933,6 +933,121 @@ class RemoteControlManager:
             "power": self.get_power_state(),
         }
 
+    # =========================================================================
+    # 8. On-Demand Task Monitor (User Processes Only) & 1-Tap Privacy Mode
+    # =========================================================================
+
+    PROTECTED_PROCESS_NAMES = {
+        "systemd",
+        "init",
+        "dbus-daemon",
+        "dbus-broker",
+        "cinnamon",
+        "cinnamon-session",
+        "xorg",
+        "xwayland",
+        "pulseaudio",
+        "pipewire",
+        "pipewire-pulse",
+        "wireplumber",
+        "tailscaled",
+        "networkmanager",
+        "gnome-keyring-daemon",
+        "polkitd",
+        "sshd",
+        "lightdm",
+        "gdm",
+    }
+
+    def list_top_processes(self, limit: int = 8) -> list[dict[str, Any]]:
+        """On-demand snapshot of top user processes sorted by RAM usage (zero idle cost)."""
+        if psutil is None:
+            return []
+        my_uid = os.getuid()
+        my_pid = os.getpid()
+        rows: list[dict[str, Any]] = []
+        for proc in psutil.process_iter(["pid", "name", "memory_info", "cpu_percent", "uids"]):
+            try:
+                info = proc.info
+                uids = info.get("uids")
+                if uids is None or uids.real != my_uid:
+                    continue
+                pid = int(info["pid"])
+                name = str(info.get("name") or "unknown")
+                mem = info.get("memory_info")
+                rss_mb = round((mem.rss / (1024 * 1024)), 1) if mem else 0.0
+                if rss_mb < 15.0:
+                    continue
+                is_protected = (pid == my_pid) or (name.lower() in self.PROTECTED_PROCESS_NAMES)
+                rows.append(
+                    {
+                        "pid": pid,
+                        "name": name,
+                        "ram_mb": rss_mb,
+                        "cpu_percent": round(float(info.get("cpu_percent") or 0.0), 1),
+                        "protected": is_protected,
+                    }
+                )
+            except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
+                continue
+        rows.sort(key=lambda r: r["ram_mb"], reverse=True)
+        return rows[: max(1, min(20, int(limit)))]
+
+    def terminate_user_process(self, pid: int, requested_by: str = "Phone") -> dict[str, Any]:
+        """Gracefully terminate a non-protected user process owned by current user."""
+        if psutil is None:
+            return {"ok": False, "error": "psutil tidak tersedia."}
+        target_pid = int(pid)
+        if target_pid <= 1 or target_pid == os.getpid():
+            return {"ok": False, "error": "Proses ini dilindungi sistem."}
+        try:
+            proc = psutil.Process(target_pid)
+            if proc.uids().real != os.getuid():
+                return {"ok": False, "error": "Hanya proses milik user aktif yang boleh ditutup."}
+            pname = proc.name()
+            if pname.lower() in self.PROTECTED_PROCESS_NAMES:
+                return {"ok": False, "error": f"Proses inti '{pname}' dilindungi dan tidak boleh ditutup."}
+            proc.terminate()
+            if self._on_notify:
+                self._on_notify("Aplikasi Ditutup", f"{pname} (PID {target_pid}) ditutup dari {requested_by}.")
+            return {"ok": True, "pid": target_pid, "name": pname}
+        except psutil.NoSuchProcess:
+            return {"ok": False, "error": "Proses sudah tidak berjalan."}
+        except psutil.AccessDenied:
+            return {"ok": False, "error": "Izin ditolak untuk menutup proses ini."}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def activate_privacy_mode(self, requested_by: str = "Phone") -> dict[str, Any]:
+        """1-Tap Privacy Mode: Pause active media + Mute audio + Lock screen + Turn off display."""
+        actions_done: list[str] = []
+        # 1. Pause media if playing
+        try:
+            media = self.get_media_status()
+            if media.get("available") and media.get("status") == "Playing":
+                self.media_action("pause")
+                actions_done.append("media_paused")
+        except Exception:
+            pass
+        # 2. Mute audio explicitly
+        if shutil.which("pactl"):
+            rc, _ = self._runner(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "1"])
+            if rc == 0:
+                actions_done.append("muted")
+        elif shutil.which("wpctl"):
+            rc, _ = self._runner(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "1"])
+            if rc == 0:
+                actions_done.append("muted")
+        # 3. Lock screen
+        lock_res = self.lock_screen(requested_by=requested_by)
+        if lock_res.get("ok"):
+            actions_done.append("locked")
+        # 4. Turn off display
+        disp_res = self.display_off(requested_by=requested_by)
+        if disp_res.get("ok"):
+            actions_done.append("display_off")
+        return {"ok": True, "actions": actions_done}
+
     def shutdown_cleanup(self) -> None:
         with self._lock:
             if self._power_timer is not None:
