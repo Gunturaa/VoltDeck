@@ -869,14 +869,18 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
                 self._send_error_json(HTTPStatus.FORBIDDEN, "Remote Control sedang dinonaktifkan.")
                 return
             try:
-                fps = max(1, min(10, int(query.get("fps", ["5"])[0])))
+                fps = max(1, min(30, int(query.get("fps", ["15"])[0])))
             except ValueError:
-                fps = 5
+                fps = 15
             try:
-                quality = max(35, min(85, int(query.get("q", ["58"])[0])))
+                quality = max(30, min(90, int(query.get("q", ["62"])[0])))
             except ValueError:
-                quality = 58
-            self._handle_screen_mjpeg_stream(fps=fps, quality=quality)
+                quality = 62
+            try:
+                max_w = max(480, min(1440, int(query.get("w", ["1024"])[0])))
+            except ValueError:
+                max_w = 1024
+            self._handle_screen_mjpeg_stream(fps=fps, quality=quality, max_width=max_w)
             return
 
         if path == "/api/remote/webcam/snapshot":
@@ -1929,10 +1933,10 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
 
-    # --- Live Screen MJPEG Stream (native iOS Safari <img> streaming!) ---
+    # --- Live Screen MJPEG Stream (Native C GStreamer up to 30 FPS + Xlib fallback) ---
 
-    def _handle_screen_mjpeg_stream(self, fps: int = 5, quality: int = 58) -> None:
-        boundary = "lanshareframe"
+    def _handle_screen_mjpeg_stream(self, fps: int = 15, quality: int = 62, max_width: int = 1024) -> None:
+        boundary = "voltdeckframe"
         self.close_connection = True
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={boundary}")
@@ -1941,11 +1945,44 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.end_headers()
 
-        interval = 1.0 / max(1, fps)
+        # 1. Try ultra-fast native C GStreamer pipeline (MIT-SHM + libjpeg-turbo, true 30 FPS + visible cursor!)
+        gst_proc = self.state.remote.open_gstreamer_mjpeg_stream(
+            fps=fps,
+            max_width=max_width,
+            quality=quality,
+            boundary=boundary,
+        )
+        if gst_proc is not None and gst_proc.stdout is not None:
+            sent_any = False
+            try:
+                while self.state.config.remote_control_enabled:
+                    chunk = gst_proc.stdout.read(32768)
+                    if not chunk:
+                        break
+                    sent_any = True
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+                if sent_any:
+                    return
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                return
+            finally:
+                try:
+                    if gst_proc.poll() is None:
+                        gst_proc.terminate()
+                        gst_proc.wait(timeout=1.0)
+                except Exception:
+                    try:
+                        gst_proc.kill()
+                    except Exception:
+                        pass
+
+        # 2. Pure-Python Xlib / Pillow fallback (used if GStreamer unavailable or in headless tests)
+        interval = 1.0 / max(1, min(30, fps))
         try:
             while self.state.config.remote_control_enabled:
                 t0 = time.monotonic()
-                jpeg = self.state.remote.capture_screen_jpeg(max_width=960, quality=quality)
+                jpeg = self.state.remote.capture_screen_jpeg(max_width=max_width, quality=quality)
                 if not jpeg:
                     time.sleep(0.5)
                     continue

@@ -34,7 +34,10 @@
     draggingBright: false,
     mediaSyncTimer: null,
     screenLive: false,
-    screenFps: 5,
+    screenFullscreen: false,
+    screenFps: 15,
+    screenQuality: 'med', // 'low' | 'med' | 'high'
+    liveMouseMode: 'trackpad', // 'trackpad' | 'tap'
     galleryFolder: 'all',
     galleryImages: [],
     galleryFolders: [],
@@ -812,29 +815,83 @@
     }
   }
 
+  function buildScreenStreamUrl() {
+    const presets = {
+      low: { w: 720, q: 50 },
+      med: { w: 1024, q: 62 },
+      high: { w: 1280, q: 76 },
+    };
+    const p = presets[state.screenQuality] || presets.med;
+    return `/api/remote/screen/stream?fps=${state.screenFps}&w=${p.w}&q=${p.q}&t=${Date.now()}`;
+  }
+
+  function updateFsFpsUI() {
+    if ($('fs-fps-badge')) $('fs-fps-badge').textContent = `${state.screenFps} FPS`;
+    if ($('btn-fs-fps-cycle')) {
+      $('btn-fs-fps-cycle').textContent = state.screenFps >= 30 ? '15' : '30';
+    }
+    $('r-fps-chips').querySelectorAll('.delay-chip').forEach((c) => {
+      c.classList.toggle('active', Number(c.dataset.fps) === state.screenFps);
+    });
+  }
+
   function startScreenLive() {
     state.screenLive = true;
-    const img = $('screen-img');
-    $('screen-placeholder').classList.add('hidden');
-    img.classList.remove('hidden');
-    img.src = `/api/remote/screen/stream?fps=${state.screenFps}&t=${Date.now()}`;
-    $('btn-screen-live').textContent = 'Stop Live';
+    const url = buildScreenStreamUrl();
+    if (state.screenFullscreen) {
+      $('screen-img').src = '';
+      $('screen-fs-img').src = url;
+    } else {
+      const img = $('screen-img');
+      $('screen-placeholder').classList.add('hidden');
+      img.classList.remove('hidden');
+      img.src = url;
+    }
+    $('btn-screen-live').textContent = tr('stop_live');
     $('btn-screen-live').classList.remove('btn-primary');
     $('btn-screen-live').classList.add('btn-danger');
     $('screen-status-tag').textContent = `LIVE · ${state.screenFps} FPS`;
     $('screen-status-tag').classList.add('tag-in');
+    updateFsFpsUI();
   }
 
   function stopScreenLive() {
+    if (state.screenFullscreen) closeScreenFullscreen(false);
     if (!state.screenLive) return;
     state.screenLive = false;
-    const img = $('screen-img');
-    img.src = '';
-    $('btn-screen-live').textContent = 'Mulai Live';
+    $('screen-img').src = '';
+    $('screen-fs-img').src = '';
+    $('btn-screen-live').textContent = tr('start_live');
     $('btn-screen-live').classList.remove('btn-danger');
     $('btn-screen-live').classList.add('btn-primary');
     $('screen-status-tag').textContent = 'STANDBY';
     $('screen-status-tag').classList.remove('tag-in');
+  }
+
+  function openScreenFullscreen() {
+    state.screenFullscreen = true;
+    const overlay = $('screen-fs-overlay');
+    overlay.classList.remove('hidden');
+    $('fs-dock').classList.remove('hidden');
+    $('fs-kbd-bar').classList.add('hidden');
+    if (overlay.requestFullscreen) {
+      overlay.requestFullscreen().catch(() => {});
+    }
+    startScreenLive();
+  }
+
+  function closeScreenFullscreen(resumeInline = true) {
+    if (!state.screenFullscreen) return;
+    state.screenFullscreen = false;
+    $('screen-fs-img').src = '';
+    $('screen-fs-overlay').classList.add('hidden');
+    $('fs-kbd-bar').classList.add('hidden');
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+    if (resumeInline && state.screenLive) {
+      startScreenLive();
+    }
   }
 
   function renderVolume(vol) {
@@ -1782,10 +1839,51 @@
       }
     });
 
-    // Live Screen MJPEG & Snapshot Controls
+    // Live Screen 30 FPS, Fullscreen & Direct Mouse Controls
     $('btn-screen-live').addEventListener('click', () => {
       if (state.screenLive) stopScreenLive();
       else startScreenLive();
+    });
+
+    $('btn-screen-fs').addEventListener('click', () => {
+      openScreenFullscreen();
+    });
+
+    $('btn-fs-close').addEventListener('click', () => {
+      closeScreenFullscreen(true);
+    });
+
+    $('btn-fs-toggle-dock').addEventListener('click', () => {
+      $('fs-dock').classList.toggle('hidden');
+      $('fs-kbd-bar').classList.add('hidden');
+    });
+
+    $('btn-fs-fps-cycle').addEventListener('click', () => {
+      state.screenFps = state.screenFps >= 30 ? 15 : 30;
+      updateFsFpsUI();
+      if (state.screenLive) startScreenLive();
+      toast(`Live Screen: ${state.screenFps} FPS`, 'info');
+    });
+
+    $('btn-fs-kbd-toggle').addEventListener('click', () => {
+      const bar = $('fs-kbd-bar');
+      bar.classList.toggle('hidden');
+      if (!bar.classList.contains('hidden')) $('fs-kbd-input').focus();
+    });
+
+    const sendFsText = async () => {
+      const inp = $('fs-kbd-input');
+      const val = inp.value;
+      if (!val) return;
+      const data = await postRemote('/api/remote/input', { type: 'text', text: val });
+      if (data) inp.value = '';
+    };
+    $('btn-fs-kbd-send').addEventListener('click', sendFsText);
+    $('fs-kbd-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendFsText();
+      }
     });
 
     $('btn-screen-snap').addEventListener('click', () => {
@@ -1801,18 +1899,154 @@
       const chip = e.target.closest('[data-fps]');
       if (!chip) return;
       state.screenFps = Number(chip.dataset.fps);
-      $('r-fps-chips').querySelectorAll('.delay-chip').forEach((c) => c.classList.toggle('active', c === chip));
+      updateFsFpsUI();
       if (state.screenLive) startScreenLive();
     });
 
-    $('screen-img').addEventListener('click', async (e) => {
-      if (!$('toggle-screen-tap').checked) return;
-      const rect = e.target.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
-      await postRemote('/api/remote/input', { type: 'click_at', x, y, button: 'left' });
+    $('r-sq-chips').addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-sq]');
+      if (!chip) return;
+      state.screenQuality = chip.dataset.sq;
+      $('r-sq-chips').querySelectorAll('.delay-chip').forEach((c) => c.classList.toggle('active', c === chip));
+      if (state.screenLive) startScreenLive();
     });
+
+    // Live Mouse Mode Switcher (Trackpad <-> Direct Tap) synced across Inline + Fullscreen Dock
+    document.querySelectorAll('[data-live-mode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.liveMouseMode = btn.dataset.liveMode;
+        document.querySelectorAll('[data-live-mode]').forEach((b) => {
+          b.classList.toggle('active', b.dataset.liveMode === state.liveMouseMode);
+        });
+      });
+    });
+
+    // Live Mouse Quick Buttons (Inline + Fullscreen Dock)
+    document.querySelectorAll('[data-live-mouse]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const act = btn.dataset.liveMouse;
+        if (act === 'left') postRemote('/api/remote/input', { type: 'click', button: 'left' });
+        else if (act === 'double') postRemote('/api/remote/input', { type: 'click', button: 'left', double: true });
+        else if (act === 'right') postRemote('/api/remote/input', { type: 'click', button: 'right' });
+        else if (act === 'scroll_up') postRemote('/api/remote/input', { type: 'scroll', delta_y: 3 });
+        else if (act === 'scroll_down') postRemote('/api/remote/input', { type: 'scroll', delta_y: -3 });
+      });
+    });
+
+    // Reusable Direct-Touch Trackpad + Direct-Tap Controller right on the Live Screen!
+    const attachLiveMouseSurface = (surfaceEl, imgEl) => {
+      let lastPt = null;
+      let moved = false;
+      let dxAcc = 0;
+      let dyAcc = 0;
+      let inFlight = false;
+      let fingerCount = 1;
+      let holdTimer = null;
+      let holdFired = false;
+
+      const flushMove = () => {
+        if (inFlight || (dxAcc === 0 && dyAcc === 0)) return;
+        const dx = Math.round(dxAcc);
+        const dy = Math.round(dyAcc);
+        dxAcc = 0;
+        dyAcc = 0;
+        if (dx === 0 && dy === 0) return;
+        inFlight = true;
+        fetch('/api/remote/input', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ type: 'move', dx, dy }),
+        })
+          .catch(() => {})
+          .finally(() => {
+            inFlight = false;
+            if (dxAcc !== 0 || dyAcc !== 0) flushMove();
+          });
+      };
+
+      const clearHold = () => {
+        if (holdTimer) {
+          clearTimeout(holdTimer);
+          holdTimer = null;
+        }
+      };
+
+      surfaceEl.addEventListener('touchstart', (e) => {
+        if (!state.screenLive && imgEl.classList.contains('hidden')) return;
+        e.preventDefault();
+        fingerCount = e.touches.length;
+        const t = e.touches[0];
+        lastPt = { x: t.clientX, y: t.clientY };
+        moved = false;
+        holdFired = false;
+        clearHold();
+        if (fingerCount === 1 && state.liveMouseMode === 'trackpad') {
+          holdTimer = setTimeout(() => {
+            if (!moved) {
+              holdFired = true;
+              postRemote('/api/remote/input', { type: 'click', button: 'right' });
+            }
+          }, 480);
+        }
+      }, { passive: false });
+
+      surfaceEl.addEventListener('touchmove', (e) => {
+        if (!lastPt) return;
+        e.preventDefault();
+        const t = e.touches[0];
+        const dx = t.clientX - lastPt.x;
+        const dy = t.clientY - lastPt.y;
+        lastPt = { x: t.clientX, y: t.clientY };
+        if (Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) {
+          moved = true;
+          clearHold();
+        }
+        if (e.touches.length >= 2) {
+          if (Math.abs(dy) > 4) {
+            postRemote('/api/remote/input', { type: 'scroll', delta_y: dy > 0 ? 2 : -2 });
+          }
+          return;
+        }
+        if (state.liveMouseMode === 'trackpad') {
+          dxAcc += dx * 2.0;
+          dyAcc += dy * 2.0;
+          flushMove();
+        }
+      }, { passive: false });
+
+      surfaceEl.addEventListener('touchend', (e) => {
+        clearHold();
+        if (!moved && !holdFired && lastPt) {
+          if (fingerCount >= 2) {
+            postRemote('/api/remote/input', { type: 'click', button: 'right' });
+          } else if (state.liveMouseMode === 'tap') {
+            const rect = imgEl.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              const x = Math.max(0, Math.min(1, (lastPt.x - rect.left) / rect.width));
+              const y = Math.max(0, Math.min(1, (lastPt.y - rect.top) / rect.height));
+              postRemote('/api/remote/input', { type: 'click_at', x, y, button: 'left' });
+            }
+          } else {
+            postRemote('/api/remote/input', { type: 'click', button: 'left' });
+          }
+        }
+        if (e.touches.length === 0) lastPt = null;
+      });
+
+      // Desktop / mouse click fallback on Live Screen
+      imgEl.addEventListener('click', (e) => {
+        if (state.liveMouseMode !== 'tap') return;
+        const rect = imgEl.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        postRemote('/api/remote/input', { type: 'click_at', x, y, button: 'left' });
+      });
+    };
+
+    attachLiveMouseSurface($('screen-viewport'), $('screen-img'));
+    attachLiveMouseSurface($('screen-fs-stage'), $('screen-fs-img'));
 
     // Presentation Keys & Remote Keyboard
     document.querySelectorAll('[data-rkey]').forEach((btn) => {

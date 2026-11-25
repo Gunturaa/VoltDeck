@@ -419,7 +419,7 @@ class LANShareEndToEndTests(unittest.TestCase):
             self.assertEqual(r_mjpeg.status_code, 200)
             self.assertIn("multipart/x-mixed-replace", r_mjpeg.headers["Content-Type"])
             chunk = next(r_mjpeg.iter_content(chunk_size=4096))
-            self.assertIn(b"--lanshareframe", chunk)
+            self.assertIn(b"--voltdeckframe", chunk)
             self.assertIn(b"image/jpeg", chunk)
 
     def test_09_dual_mode_offline_vs_anywhere_tailscale_security(self) -> None:
@@ -889,10 +889,21 @@ class LANShareEndToEndTests(unittest.TestCase):
         self.assertEqual(r_bg["battery_guard_percent"], 90)
         self.assertIn("disk_free_gb", r_bg["telemetry"])
 
-        # 8. Screen Recorder status endpoint
+        # 8. Screen Recorder status + 30 FPS Live MJPEG stream params + Fullscreen UI check
         r_rec = sess.get(f"{self.base_url}/api/remote/screen/record", timeout=5).json()
         self.assertTrue(r_rec["ok"])
         self.assertIn("recording", r_rec)
+
+        sbuf = io.BytesIO()
+        Image.new("RGB", (64, 36), color=(0, 122, 255)).save(sbuf, format="JPEG")
+        fake_jpg = sbuf.getvalue()
+        remote.open_gstreamer_mjpeg_stream = lambda **kw: None  # type: ignore
+        remote.capture_screen_jpeg = lambda max_width=1024, quality=62: fake_jpg  # type: ignore
+        with sess.get(f"{self.base_url}/api/remote/screen/stream?fps=30&w=1280&q=76", stream=True, timeout=5) as rs:
+            self.assertEqual(rs.status_code, 200)
+            self.assertIn("multipart/x-mixed-replace", rs.headers.get("Content-Type", ""))
+            first_chunk = next(rs.iter_content(chunk_size=4096))
+            self.assertIn(b"voltdeckframe", first_chunk)
 
 
 if __name__ == "__main__":

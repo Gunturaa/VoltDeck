@@ -643,7 +643,7 @@
           </div>
         </div>
 
-        <!-- SUB-VIEW 2: Live Screen MJPEG Stream & Snapshot -->
+        <!-- SUB-VIEW 2: Live Screen 30 FPS Stream, Fullscreen & Direct Mouse Control -->
         <div class="r-subpanel hidden" id="r-panel-screen">
           <div class="remote-card">
             <div class="send-card-head">
@@ -655,12 +655,42 @@
               <div class="screen-placeholder" id="screen-placeholder" data-i18n="screen_placeholder">
                 Ketuk Mulai Live untuk memantau layar laptop secara langsung, atau ketuk Snapshot.
               </div>
-              <img id="screen-img" class="screen-img hidden" alt="Live Laptop Screen" />
+              <img id="screen-img" class="screen-img hidden" alt="Live Laptop Screen" draggable="false" />
             </div>
 
-            <div class="r-power-quick">
+            <div class="send-actions send-actions-3">
               <button class="btn btn-primary r-ctrl-btn" id="btn-screen-live" data-i18n="start_live" type="button">Mulai Live</button>
+              <button class="btn r-ctrl-btn" id="btn-screen-fs" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <polyline points="9 21 3 21 3 15"></polyline>
+                  <line x1="21" y1="3" x2="14" y2="10"></line>
+                  <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+                <span data-i18n="screen_fullscreen">Penuh</span>
+              </button>
               <button class="btn r-ctrl-btn" id="btn-screen-snap" data-i18n="snapshot_btn" type="button">Snapshot</button>
+            </div>
+
+            <!-- Inline Mouse Mode & Controls right on Live Screen -->
+            <div class="live-mouse-box">
+              <div class="send-card-head">
+                <span class="r-delay-label" data-i18n="live_mouse_title">Kontrol Mouse di Layar Live</span>
+                <div class="lang-switch" id="live-mode-switch">
+                  <button class="lang-btn active" data-live-mode="trackpad" data-i18n="live_mode_trackpad" type="button" style="padding:0 9px">Trackpad</button>
+                  <button class="lang-btn" data-live-mode="tap" data-i18n="live_mode_tap" type="button" style="padding:0 9px">Tap</button>
+                </div>
+              </div>
+              <div class="r-mouse-row">
+                <button class="btn r-ctrl-btn" data-live-mouse="left" data-i18n="left_click" type="button">Klik Kiri</button>
+                <button class="btn r-ctrl-btn" data-live-mouse="right" data-i18n="right_click" type="button">Klik Kanan</button>
+                <button class="btn r-ctrl-btn" data-live-mouse="scroll_up" type="button" aria-label="Scroll Up">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+                <button class="btn r-ctrl-btn" data-live-mouse="scroll_down" type="button" aria-label="Scroll Down">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+              </div>
             </div>
 
             <button class="btn r-ctrl-btn" id="btn-screen-record" type="button">
@@ -670,18 +700,18 @@
 
             <div class="screen-controls-row">
               <div class="r-fps-chips" id="r-fps-chips">
-                <button class="delay-chip" data-fps="2" type="button">2 FPS</button>
-                <button class="delay-chip active" data-fps="5" type="button">5 FPS</button>
-                <button class="delay-chip" data-fps="8" type="button">8 FPS</button>
+                <button class="delay-chip" data-fps="5" type="button">5 FPS</button>
+                <button class="delay-chip active" data-fps="15" type="button">15 FPS</button>
+                <button class="delay-chip" data-fps="30" type="button">30 FPS</button>
               </div>
               <a class="btn btn-sm" id="btn-screen-dl" data-i18n="save_jpg" href="/api/remote/screen/snapshot?download=1">Simpan JPG</a>
             </div>
 
-            <label class="toggle" style="margin-top:2px">
-              <input type="checkbox" id="toggle-screen-tap" />
-              <span class="toggle-track"></span>
-              <span class="toggle-label" data-i18n="tap_to_click_label">Tap pada layar live untuk klik kursor di laptop</span>
-            </label>
+            <div class="r-delay-chips" id="r-sq-chips" style="grid-template-columns:repeat(3,1fr)">
+              <button class="delay-chip" data-sq="low" data-i18n="sq_low" type="button">Hemat</button>
+              <button class="delay-chip active" data-sq="med" data-i18n="sq_med" type="button">Seimbang</button>
+              <button class="delay-chip" data-sq="high" data-i18n="sq_high" type="button">Tajam</button>
+            </div>
           </div>
         </div>
 
@@ -772,6 +802,65 @@
         <span data-i18n="tab_remote">Remote</span>
       </button>
     </nav>
+  </div>
+
+  <!-- Fullscreen Live Screen + Floating Mouse Controller (iOS & Android Native-Feel) -->
+  <div class="screen-fs-overlay hidden" id="screen-fs-overlay">
+    <div class="screen-fs-top" id="fs-top-bar">
+      <div class="fs-pill-group">
+        <span class="tag tag-in" id="fs-fps-badge">15 FPS</span>
+        <button class="fs-icon-btn" id="btn-fs-fps-cycle" type="button" title="Switch 15 / 30 FPS">30</button>
+      </div>
+      <div class="fs-pill-group">
+        <button class="fs-icon-btn" id="btn-fs-toggle-dock" type="button" aria-label="Toggle Controller" title="Sembunyikan / Tampilkan Kontroler">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="3"></rect>
+            <line x1="6" y1="15" x2="18" y2="15"></line>
+          </svg>
+        </button>
+        <button class="fs-icon-btn fs-close-btn" id="btn-fs-close" type="button" aria-label="Close Fullscreen" title="Tutup Layar Penuh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="screen-fs-stage" id="screen-fs-stage">
+      <img id="screen-fs-img" class="screen-fs-img" alt="Fullscreen Live Laptop Screen" draggable="false" />
+    </div>
+
+    <!-- Floating Keyboard Bar -->
+    <div class="fs-kbd-bar hidden" id="fs-kbd-bar">
+      <input type="text" id="fs-kbd-input" class="r-text-input" data-i18n-placeholder="type_placeholder" placeholder="Ketik teks lalu kirim..." />
+      <button class="btn btn-primary btn-sm" id="btn-fs-kbd-send" data-i18n="type_btn" type="button" style="height:36px">Ketik</button>
+      <button class="btn btn-sm" data-rkey="enter" type="button" style="height:36px">↵</button>
+      <button class="btn btn-sm" data-rkey="backspace" type="button" style="height:36px">⌫</button>
+    </div>
+
+    <!-- Floating Glass Mouse Controller Dock -->
+    <div class="fs-dock" id="fs-dock">
+      <div class="lang-switch" style="flex-shrink:0">
+        <button class="lang-btn active" data-live-mode="trackpad" data-i18n="live_mode_trackpad" type="button" style="padding:0 8px">Trackpad</button>
+        <button class="lang-btn" data-live-mode="tap" data-i18n="live_mode_tap" type="button" style="padding:0 8px">Tap</button>
+      </div>
+      <button class="fs-dock-btn" data-live-mouse="left" data-i18n="fs_left" type="button">Kiri</button>
+      <button class="fs-dock-btn" data-live-mouse="double" type="button">2×</button>
+      <button class="fs-dock-btn" data-live-mouse="right" data-i18n="fs_right" type="button">Kanan</button>
+      <button class="fs-dock-btn" data-live-mouse="scroll_up" type="button" aria-label="Scroll Up">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+      </button>
+      <button class="fs-dock-btn" data-live-mouse="scroll_down" type="button" aria-label="Scroll Down">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <button class="fs-dock-btn" id="btn-fs-kbd-toggle" type="button" aria-label="Keyboard" title="Keyboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+          <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"></path>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <!-- Lightbox Preview (allows long-press Save to Photos on iPhone!) -->

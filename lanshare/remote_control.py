@@ -810,6 +810,67 @@ class RemoteControlManager:
     # 5. Live Screen Capture (X11 ZPixmap -> JPEG for MJPEG Stream & Snapshot)
     # =========================================================================
 
+    def get_screen_geometry(self) -> tuple[int, int]:
+        if xdisplay is not None:
+            dpy = None
+            try:
+                dpy = xdisplay.Display()
+                geom = dpy.screen().root.get_geometry()
+                w, h = int(geom.width), int(geom.height)
+                if w > 0 and h > 0:
+                    return w, h
+            except Exception:
+                pass
+            finally:
+                if dpy is not None:
+                    try:
+                        dpy.close()
+                    except Exception:
+                        pass
+        return 0, 0
+
+    def open_gstreamer_mjpeg_stream(
+        self,
+        fps: int = 15,
+        max_width: int = 1024,
+        quality: int = 62,
+        boundary: str = "voltdeckframe",
+    ) -> Optional[subprocess.Popen]:
+        """Start native C GStreamer MIT-SHM 30fps-capable MJPEG stream with visible mouse pointer."""
+        if not shutil.which("gst-launch-1.0") or not os.environ.get("DISPLAY"):
+            return None
+        w, h = self.get_screen_geometry()
+        if w <= 0 or h <= 0:
+            return None
+        safe_fps = max(1, min(30, int(fps)))
+        safe_q = max(30, min(90, int(quality)))
+        target_w = min(w, max(480, int(max_width)))
+        target_w -= target_w % 2
+        target_h = max(270, int(round(h * (target_w / w))))
+        target_h -= target_h % 2
+
+        cmd = [
+            "gst-launch-1.0", "-q",
+            "ximagesrc", "use-damage=false", "show-pointer=true",
+            "!", f"video/x-raw,framerate={safe_fps}/1",
+            "!", "videoscale", "method=0",
+            "!", f"video/x-raw,width={target_w},height={target_h}",
+            "!", "videoconvert",
+            "!", "jpegenc", f"quality={safe_q}",
+            "!", "multipartmux", f"boundary={boundary}",
+            "!", "fdsink", "fd=1",
+        ]
+        try:
+            return subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                bufsize=0,
+                start_new_session=True,
+            )
+        except Exception:
+            return None
+
     def capture_screen_jpeg(self, max_width: int = 960, quality: int = 62) -> Optional[bytes]:
         """Capture current Linux Mint desktop screen as compressed JPEG bytes."""
         # Fast direct X11 capture via python3-xlib (thread-safe per connection, ~25-45ms!)
