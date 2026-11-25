@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import http.cookies
+import io
 import json
 import mimetypes
 import os
@@ -148,6 +149,7 @@ class LANShareState:
         config: AppConfig,
         port: int,
         on_mobile_clipboard: Optional[Callable[[str, str], None]] = None,
+        on_mobile_clipboard_image: Optional[Callable[[bytes, str], None]] = None,
         on_notify: Optional[Callable[[str, str], None]] = None,
         on_open_url: Optional[Callable[[str, str], None]] = None,
         remote_command_runner: Optional[Callable[[list[str]], tuple[int, str]]] = None,
@@ -165,6 +167,7 @@ class LANShareState:
         self.clipboard = ClipboardStore()
         self.events = EventBroker()
         self.on_mobile_clipboard = on_mobile_clipboard
+        self.on_mobile_clipboard_image = on_mobile_clipboard_image
         self.on_notify = on_notify
         self.on_open_url = on_open_url
         self._tailscale_provider = tailscale_status_provider or get_tailscale_status
@@ -176,6 +179,7 @@ class LANShareState:
             on_notify=self.notify,
             command_runner=remote_command_runner,
         )
+        self.remote.set_battery_guard(config.battery_guard_percent)
 
     def refresh_tailscale(self) -> dict[str, Any]:
         ts = self._tailscale_provider()
@@ -315,6 +319,7 @@ class LANShareState:
             "files": self.storage.list_files(),
             "transfers": self.storage.list_active_transfers(),
             "clipboard": self.clipboard.list_items(),
+            "clipboard_image": self.clipboard.get_image_meta(),
             "power": self.remote.get_power_state(),
         }
 
@@ -332,6 +337,7 @@ class LANShareState:
             "files": self.storage.list_files(),
             "transfers": self.storage.list_active_transfers(),
             "clipboard": self.clipboard.list_items(),
+            "clipboard_image": self.clipboard.get_image_meta(),
             "remote_enabled": self.config.remote_control_enabled,
             "power": self.remote.get_power_state(),
         }
@@ -343,7 +349,13 @@ class LANShareState:
         self.events.broadcast("transfer_progress", {"transfers": self.storage.list_active_transfers()})
 
     def broadcast_clipboard(self) -> None:
-        self.events.broadcast("clipboard_updated", {"clipboard": self.clipboard.list_items()})
+        self.events.broadcast(
+            "clipboard_updated",
+            {
+                "clipboard": self.clipboard.list_items(),
+                "clipboard_image": self.clipboard.get_image_meta(),
+            },
+        )
 
     def broadcast_devices(self) -> None:
         self.events.broadcast(
@@ -410,6 +422,13 @@ class LANShareState:
     def push_desktop_clipboard(self, text: str) -> bool:
         entry = self.clipboard.push(text=text, source=self.config.device_name, source_kind="desktop")
         if entry is None:
+            return False
+        self.broadcast_clipboard()
+        return True
+
+    def push_desktop_clipboard_image(self, png_bytes: bytes) -> bool:
+        meta = self.clipboard.push_image(data=png_bytes, source=self.config.device_name, source_kind="desktop")
+        if meta is None:
             return False
         self.broadcast_clipboard()
         return True
@@ -767,7 +786,24 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/clipboard":
-            self._send_json({"ok": True, "clipboard": self.state.clipboard.list_items()})
+            self._send_json(
+                {
+                    "ok": True,
+                    "clipboard": self.state.clipboard.list_items(),
+                    "clipboard_image": self.state.clipboard.get_image_meta(),
+                }
+            )
+            return
+
+        if path == "/api/clipboard/image":
+            img_bytes = self.state.clipboard.get_image_bytes()
+            if not img_bytes:
+                self._send_error_json(HTTPStatus.NOT_FOUND, "Belum ada gambar di clipboard.")
+                return
+            extra = []
+            if query.get("download", ["0"])[0] == "1":
+                extra.append(("Content-Disposition", 'attachment; filename="voltdeck_clipboard.png"'))
+            self._send_bytes(img_bytes, "image/png", cache_control="no-store", extra_headers=extra)
             return
 
         if path == "/api/remote/status":
@@ -777,6 +813,31 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/remote/telemetry":
             self._send_json({"ok": True, **self.state.remote.get_live_status()})
+            return
+
+        if path == "/api/remote/streams":
+            if not self.state.config.remote_control_enabled:
+                self._send_error_json(HTTPStatus.FORBIDDEN, "Remote Control sedang dinonaktifkan.")
+                return
+            self._send_json({"ok": True, "streams": self.state.remote.list_audio_streams()})
+            return
+
+        if path == "/api/remote/windows":
+            if not self.state.config.remote_control_enabled:
+                self._send_error_json(HTTPStatus.FORBIDDEN, "Remote Control sedang dinonaktifkan.")
+                return
+            self._send_json({"ok": True, "windows": self.state.remote.list_open_windows()})
+            return
+
+        if path == "/api/remote/bluetooth":
+            if not self.state.config.remote_control_enabled:
+                self._send_error_json(HTTPStatus.FORBIDDEN, "Remote Control sedang dinonaktifkan.")
+                return
+            self._send_json({"ok": True, **self.state.remote.list_bluetooth_devices()})
+            return
+
+        if path == "/api/remote/screen/record":
+            self._send_json({"ok": True, **self.state.remote.get_screen_record_status()})
             return
 
         if path == "/api/remote/processes":
@@ -1089,6 +1150,30 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
             self._handle_remote_post(path, role, dev)
             return
 
+        if path == "/api/clipboard/image":
+            self._handle_clipboard_image_upload(role, dev)
+            return
+
+        if path == "/api/explorer/mkdir":
+            body = self._read_json_body()
+            if body is None:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, "Invalid JSON payload")
+                return
+            ok, err, listing = self.state.storage.create_explorer_folder(
+                str(body.get("root", "")),
+                str(body.get("path", "")),
+                str(body.get("name", "")),
+            )
+            if not ok:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, err)
+                return
+            self._send_json({"ok": True, **(listing or {})})
+            return
+
+        if path == "/api/explorer/upload":
+            self._handle_explorer_upload(query, role, dev)
+            return
+
         if path == "/api/clipboard/clear":
             self.state.clipboard.clear()
             self.state.broadcast_clipboard()
@@ -1336,6 +1421,89 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
                 self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal mengganti output audio")))
                 return
             self._send_json(res)
+            return
+
+        if path == "/api/remote/streams":
+            try:
+                sid = int(body.get("id", -1))
+            except (TypeError, ValueError):
+                self._send_error_json(HTTPStatus.BAD_REQUEST, "Stream ID tidak valid.")
+                return
+            pct = int(body["percent"]) if "percent" in body and body["percent"] is not None else None
+            mute_t = bool(body.get("mute_toggle", False))
+            res = self.state.remote.set_audio_stream(sid, percent=pct, mute_toggle=mute_t)
+            if not res.get("ok"):
+                self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal mengatur volume aplikasi")))
+                return
+            self._send_json(res)
+            return
+
+        if path == "/api/remote/windows":
+            if "shortcut" in body:
+                res = self.state.remote.quick_shortcut(str(body.get("shortcut", "")))
+            else:
+                res = self.state.remote.window_action(str(body.get("id", "")), str(body.get("action", "focus")))
+            if not res.get("ok"):
+                self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal mengatur jendela")))
+                return
+            self._send_json(res)
+            return
+
+        if path == "/api/remote/keep-awake":
+            enabled = bool(body.get("enabled", False))
+            res = self.state.remote.set_keep_awake(enabled, requested_by=peer)
+            self._send_json(res)
+            return
+
+        if path == "/api/remote/bluetooth":
+            action = str(body.get("action", ""))
+            mac = str(body.get("mac", ""))
+            power = body["power"] if "power" in body else None
+            res = self.state.remote.bluetooth_action(action=action, mac=mac, power=power)
+            if not res.get("ok"):
+                self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal mengatur Bluetooth")))
+                return
+            self._send_json(res)
+            return
+
+        if path == "/api/remote/battery-guard":
+            try:
+                pct = int(body.get("percent", 0))
+            except (TypeError, ValueError):
+                pct = 0
+            applied = self.state.remote.set_battery_guard(pct)
+            self.state.config.battery_guard_percent = applied
+            self.state.config.save()
+            self._send_json({"ok": True, "battery_guard_percent": applied, "telemetry": self.state.remote.get_telemetry()})
+            return
+
+        if path == "/api/remote/screen/record":
+            action = str(body.get("action", ""))
+            if action == "start":
+                res = self.state.remote.start_screen_recording(self.state.storage.receive_dir, requested_by=peer)
+                if not res.get("ok"):
+                    self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal merekam layar")))
+                    return
+                self._send_json(res)
+                return
+            if action == "stop":
+                res = self.state.remote.stop_screen_recording()
+                if not res.get("ok"):
+                    self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Gagal menghentikan rekaman")))
+                    return
+                saved_path = Path(res["path"])
+                entry = self.state.storage.register_local_file(
+                    saved_path,
+                    direction="outbound",
+                    sender=self.state.config.device_name,
+                    owned_by_receive_dir=True,
+                )
+                if entry:
+                    self.state.broadcast_files()
+                    res["file"] = entry.to_dict()
+                self._send_json(res)
+                return
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Aksi rekaman harus start atau stop.")
             return
 
         if path == "/api/remote/brightness":
@@ -1796,6 +1964,87 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
 
+    def _handle_clipboard_image_upload(self, role: str, dev: Optional[ConnectedDevice]) -> None:
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length <= 0 or length > 10 * 1024 * 1024:
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Ukuran gambar clipboard harus di bawah 10 MB.")
+            return
+        raw = self.rfile.read(length)
+        png_bytes = raw
+        try:
+            from PIL import Image, ImageOps
+            with Image.open(io.BytesIO(raw)) as img:
+                img = ImageOps.exif_transpose(img)
+                if img.mode not in ("RGB", "RGBA"):
+                    img = img.convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                png_bytes = buf.getvalue()
+        except Exception:
+            if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+                self._send_error_json(HTTPStatus.BAD_REQUEST, "Format gambar tidak dikenali.")
+                return
+        source = self.state.config.device_name if role == "desktop" else (dev.device_name if dev else "Phone")
+        meta = self.state.clipboard.push_image(png_bytes, source=source, source_kind=role, deduplicate_latest=False)
+        if not meta:
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Gagal menyimpan gambar clipboard.")
+            return
+        self.state.broadcast_clipboard()
+        if role == "mobile" and self.state.on_mobile_clipboard_image:
+            try:
+                self.state.on_mobile_clipboard_image(png_bytes, source)
+            except Exception:
+                pass
+            self.state.notify("Gambar Clipboard Diterima", f"Gambar dari {source} siap ditempel (Ctrl+V) di Linux.")
+        self._send_json({"ok": True, "clipboard_image": meta})
+
+    def _handle_explorer_upload(
+        self,
+        query: dict[str, list[str]],
+        role: str,
+        dev: Optional[ConnectedDevice],
+    ) -> None:
+        root_name = query.get("root", [""])[0]
+        rel_path = query.get("path", [""])[0]
+        raw_name = urllib.parse.unquote(self.headers.get("X-Filename") or query.get("filename", ["upload.bin"])[0])
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            content_length = 0
+        if content_length <= 0:
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Empty file upload.")
+            return
+        target = self.state.storage.reserve_explorer_upload_target(root_name, rel_path, raw_name)
+        if not target:
+            self._send_error_json(HTTPStatus.BAD_REQUEST, "Folder tujuan tidak valid atau akses ditolak.")
+            return
+        tmp_path = target.with_name(f".{target.name}.vdpart")
+        remaining = content_length
+        try:
+            with open(tmp_path, "wb") as dst:
+                while remaining > 0:
+                    chunk = self.rfile.read(min(STREAM_CHUNK_SIZE, remaining))
+                    if not chunk:
+                        raise OSError("Unexpected EOF")
+                    dst.write(chunk)
+                    remaining -= len(chunk)
+            tmp_path.replace(target)
+        except Exception as exc:
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except OSError:
+                pass
+            self._send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, f"Gagal mengunggah file: {exc}")
+            return
+        peer = dev.device_name if dev else self.state.config.device_name
+        self.state.notify("File Tersimpan di Explorer", f"{target.name} diunggah ke {root_name} dari {peer}.")
+        listing = self.state.storage.list_explorer_dir(root_name, rel_path)
+        self._send_json({"ok": True, "filename": target.name, **listing})
+
     # --- Server-Sent Events (SSE) ---
 
     def _handle_sse(self, role: str, dev: Optional[ConnectedDevice]) -> None:
@@ -1846,6 +2095,7 @@ class LANShareServer:
         self,
         config: AppConfig,
         on_mobile_clipboard: Optional[Callable[[str, str], None]] = None,
+        on_mobile_clipboard_image: Optional[Callable[[bytes, str], None]] = None,
         on_notify: Optional[Callable[[str, str], None]] = None,
         on_open_url: Optional[Callable[[str, str], None]] = None,
         remote_command_runner: Optional[Callable[[list[str]], tuple[int, str]]] = None,
@@ -1857,6 +2107,7 @@ class LANShareServer:
             config=config,
             port=self.port,
             on_mobile_clipboard=on_mobile_clipboard,
+            on_mobile_clipboard_image=on_mobile_clipboard_image,
             on_notify=on_notify,
             on_open_url=on_open_url,
             remote_command_runner=remote_command_runner,

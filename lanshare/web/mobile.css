@@ -1522,6 +1522,85 @@ html, body {
   font-weight: 600;
 }
 
+.telemetry-strip-5 {
+  grid-template-columns: repeat(5, 1fr) !important;
+}
+
+.mixer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mixer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mixer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+}
+
+.mixer-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mixer-app-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.clip-img-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.clip-img-preview {
+  width: 100%;
+  max-height: 190px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+}
+
+.rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.rec-dot.active {
+  animation: pulse-rec 1.1s infinite;
+}
+
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
 /* Light Mode Specific Refinements for Mobile & Tablet/Desktop Browser */
 [data-theme="light"] .m-hero-backdrop {
   background: radial-gradient(circle at 82% 18%, rgba(0, 122, 255, 0.11), transparent 56%), #f2f2f7;

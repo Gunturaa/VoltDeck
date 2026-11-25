@@ -68,6 +68,7 @@ class AppConfig:
     language: str = "id"  # "id" | "en"
     theme: str = "dark"  # "dark" | "light"
     custom_pin: str = ""  # Empty until user creates or saves a persistent 6-digit PIN
+    battery_guard_percent: int = 0  # 0 (off) | 90 | 95
     minimize_to_tray: bool = True
     notifications_enabled: bool = True
     window_width: int = 1080

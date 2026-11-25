@@ -12,6 +12,7 @@ from typing import Optional
 
 MAX_CLIPBOARD_ITEMS = 30
 MAX_CLIPBOARD_BYTES = 512 * 1024  # 512 KB text limit
+MAX_CLIPBOARD_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB image limit
 
 
 @dataclass
@@ -41,6 +42,57 @@ class ClipboardStore:
         self._lock = threading.RLock()
         self._items: list[ClipboardEntry] = []
         self._last_hash: str = ""
+        # Latest 2-way image clipboard slot (PNG bytes)
+        self._image_bytes: Optional[bytes] = None
+        self._image_meta: Optional[dict] = None
+        self._last_image_hash: str = ""
+
+    @staticmethod
+    def hash_bytes(data: bytes) -> str:
+        return hashlib.sha256(data).hexdigest()
+
+    def push_image(
+        self,
+        data: bytes,
+        source: str,
+        source_kind: str,
+        deduplicate_latest: bool = True,
+    ) -> Optional[dict]:
+        if not data or len(data) > MAX_CLIPBOARD_IMAGE_BYTES:
+            return None
+        digest = self.hash_bytes(data)
+        with self._lock:
+            if deduplicate_latest and digest == self._last_image_hash and self._image_meta:
+                return None
+            meta = {
+                "id": secrets.token_hex(6),
+                "source": source,
+                "source_kind": source_kind,
+                "size": len(data),
+                "created_at": time.time(),
+            }
+            self._image_bytes = data
+            self._image_meta = meta
+            self._last_image_hash = digest
+            return dict(meta)
+
+    def get_image_meta(self) -> Optional[dict]:
+        with self._lock:
+            return dict(self._image_meta) if self._image_meta else None
+
+    def get_image_bytes(self) -> Optional[bytes]:
+        with self._lock:
+            return self._image_bytes
+
+    def latest_image_hash(self) -> str:
+        with self._lock:
+            return self._last_image_hash
+
+    def clear_image(self) -> None:
+        with self._lock:
+            self._image_bytes = None
+            self._image_meta = None
+            self._last_image_hash = ""
 
     @staticmethod
     def hash_text(text: str) -> str:

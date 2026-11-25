@@ -38,22 +38,25 @@
   - **Paste Screenshot (`Ctrl+V`)** langsung dari clipboard Linux Mint ke perangkat yang terhubung.
   - Tombol **Kamera** langsung di browser HP (iOS & Android) untuk memotret dokumen/catatan langsung ke laptop.
 
-### 📋 Shared Clipboard 2 Arah + Buka Link di Laptop
-- Sinkronisasi otomatis clipboard Linux Mint (`Gtk.Clipboard`) ke iOS, Android, dan browser desktop (termasuk tombol *Salin* yang kompatibel dengan HTTP lokal).
+### 📋 Shared Clipboard 2 Arah (Teks + Gambar) + Buka Link di Laptop
+- Sinkronisasi otomatis teks & gambar clipboard Linux Mint (`Gtk.Clipboard`) ke iOS, Android, dan browser desktop.
+- **Clipboard Gambar 2 Arah:** Copy/screenshot gambar di Linux → langsung tampil & siap simpan PNG di HP; kirim foto dari HP → langsung masuk clipboard Linux siap `Ctrl+V` di Figma, Docs, atau WhatsApp Web!
 - Tempel pesan berisi tautan dari WhatsApp di HP → ketuk **`Buka di Laptop`** untuk langsung membuka tautan tersebut di browser default Linux Mint.
 
-### 🖼️ Galeri, File Explorer & Ambil Gambar dari Laptop
-- **File Explorer Aman (Sandboxed):** Jelajahi folder aman laptop (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Videos`, `LANShare`), cari file, dan unduh langsung PDF, DOCX, ZIP, dll. ke HP (file tersembunyi/dotfile & path traversal diblokir ketat).
+### 🖼️ File Explorer 2 Arah, Galeri & Ambil Gambar dari Laptop
+- **File Explorer 2 Arah (Sandboxed):** Jelajahi folder aman laptop (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Videos`, `LANShare`), cari file, **unggah file langsung ke subfolder tujuan**, **buat folder baru**, dan unduh PDF/DOCX/ZIP ke HP (dotfile & path traversal diblokir ketat).
 - **Galeri Foto:** Jelajah foto dari folder laptop dalam grid thumbnail responsif dengan lightbox ramah notch iPhone.
 - **Ambil Gambar Instan:** **Foto Webcam Laptop** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) & **Screenshot Layar** 1 ketuk langsung unduh ke HP.
 
 ### 🎛️ Remote Control Lengkap
-- **Telemetry Real-Time & Live Sync 1.5 Detik:** Pantau **Baterai (+ status charger)**, **CPU %**, **RAM %**, dan **Suhu (°C)** sambil menyinkronkan **Media, Volume, dan Kecerahan** secara otomatis tiap 1.5 detik selama tab Remote terbuka (0% beban saat idle/tertutup).
-- **Media Cerdas (Sticky Player) & Audio:** Play/Pause, Next/Prev, Seek `±10 dtk` via D-Bus **MPRIS2** (Spotify, Chrome/YouTube, VLC, Celluloid) dengan **pelacakan player aktif** (pause Spotify tetap terkunci di Spotify, tidak loncat ke Chrome) + **chip pilih player 1-ketuk**, slider volume, serta **Ganti Output Audio** (Speaker ↔ Headset/Bluetooth via `pactl`).
+- **Telemetry Real-Time, Sisa SSD & Battery Full Guard:** Pantau **Baterai (+ charger)**, **CPU %**, **RAM %**, **Sisa SSD**, dan **Suhu (°C)** dengan **live sync 1.5 detik** serta pengingat cabut charger **Battery Full Guard (`90%` / `95%`)**.
+- **Media Cerdas (Sticky Player), Audio & Mixer Per Aplikasi:** Play/Pause, Next/Prev, Seek `±10 dtk` via **MPRIS2** (Spotify, Chrome/YouTube, VLC, Celluloid) dengan **pelacakan player aktif** + **chip pilih player**, volume utama + **Per-App Volume Mixer** (`pactl sink-inputs` untuk atur Spotify/Chrome/Discord terpisah), serta **Ganti Output Audio**.
+- **Bluetooth Quick Connect (Control Center):** Toggle Bluetooth laptop On/Off dan 1-ketuk sambung/putus perangkat terpasang (AirPods/TWS, headset, speaker via `bluetoothctl`).
+- **Window Switcher, Smart Deck & Keep Awake (Caffeine):** Lihat daftar jendela terbuka (`wmctrl`) untuk fokus atau tutup dalam 1 ketuk, shortcut cepat (`Alt+Tab`, `Show Desktop`, `Fullscreen F11`), dan toggle **Keep Awake** (`systemd-inhibit`) agar laptop tetap menyala.
 - **Layar, Privacy Mode 1-Ketuk & Daya Aman:** Slider kecerahan layar, **Matikan Layar Saja** (`DPMS`), **Mode Privasi 1-Ketuk** (*Pause media + Mute audio + Kunci layar + Matikan layar*), **Kunci Layar**, **Sleep**, **Restart**, dan **Matikan Laptop** dengan konfirmasi 2× ketuk + timer (`15 dtk / 15 mnt / 30 mnt / 60 mnt`) + tombol **Batalkan** di HP maupun Desktop.
 - **App Launcher & Pintasan Web Cepat:** Buka aplikasi terpasang di Linux (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, dll.) melalui *allowlist* aman, atau buka **YouTube, GitHub, WhatsApp Web, ChatGPT, dan Gmail** di browser laptop dalam 1 ketuk.
 - **Monitor Tugas RAM On-Demand:** Lihat proses dengan pemakaian RAM tertinggi secara *on-demand* (0% beban saat idle) dan tutup aplikasi yang hang dengan konfirmasi 2× ketuk (proses inti sistem dilindungi).
-- **Layar Live (MJPEG):** Pantau layar laptop secara langsung di Safari, Chrome, atau Firefox (`2 / 5 / 8 FPS`) + opsi **Tap-untuk-Klik**.
+- **Layar Live (MJPEG) & Rekam Layar 1-Ketuk:** Pantau layar laptop secara langsung (`2 / 5 / 8 FPS`) + **Tap-untuk-Klik**, atau **Rekam Layar Laptop** dalam 1 ketuk (`ffmpeg` MP4 / GStreamer WebM) yang otomatis masuk daftar unduhan HP!
 - **Touchpad & Clicker Presentasi:** Trackpad sentuh/mouse via X11 `XTest`, tombol slide (`Prev / Next / F5 / Esc`), dan keyboard jarak jauh.
 
 ### 🌐 Dual-Mode & Keamanan
@@ -131,7 +134,7 @@ sudo ufw allow in on tailscale0 to any port 8765 proto tcp comment 'VoltDeck Tai
 python3 -m unittest discover -s tests -v
 ```
 
-Mencakup **15 pengujian end-to-end otomatis**: Custom PIN permanen & proteksi brute-force, Mode Terang/Gelap, streaming upload/download (`Range 206`, thumbnail, `.zip`), shared clipboard 2 arah + SSE, sticky MPRIS2 player & live sync remote, layar live MJPEG, Dual-Mode *Offline vs Anywhere*, Trusted Device lintas restart, App Launcher, Webcam, Galeri, Bilingual ID/EN, File Explorer aman, Task Monitor RAM, dan Mode Privasi 1-ketuk.
+Mencakup **16 pengujian end-to-end otomatis**: Custom PIN permanen & proteksi brute-force, Mode Terang/Gelap, streaming upload/download (`Range 206`, thumbnail, `.zip`), shared clipboard teks & gambar 2 arah + SSE, sticky MPRIS2 player & live sync remote, Per-App Volume Mixer, Window Switcher + Keep Awake, Bluetooth Quick Connect, File Explorer 2 arah (upload & buat folder), Battery Full Guard + SSD, Rekam Layar, Dual-Mode *Offline vs Anywhere*, Trusted Device lintas restart, App Launcher, Webcam, Galeri, Bilingual ID/EN, Task Monitor RAM, dan Mode Privasi 1-ketuk.
 
 ---
 

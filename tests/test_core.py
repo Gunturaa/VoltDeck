@@ -793,6 +793,107 @@ class LANShareEndToEndTests(unittest.TestCase):
         finally:
             server2.stop()
 
+    def test_16_overpower_suite_all_7_features(self) -> None:
+        sess = self._auth_mobile_session()
+        remote = self.server.state.remote
+
+        # 1. Per-App Audio Mixer (mocked pactl sink-inputs)
+        orig_runner = remote._runner
+
+        def mock_runner(cmd: list[str]) -> tuple[int, str]:
+            if cmd[:3] == ["pactl", "list", "sink-inputs"]:
+                return 0, (
+                    "Sink Input #42\n"
+                    "\tMute: no\n"
+                    "\tVolume: front-left: 49152 /  75% / -7.50 dB\n"
+                    "\tProperties:\n"
+                    "\t\tapplication.name = \"Spotify\"\n"
+                )
+            if cmd[:2] == ["wmctrl", "-lp"]:
+                return 0, "0x04a00003  0 1234 mint-test Visual Studio Code\n"
+            if cmd[:2] == ["bluetoothctl", "show"]:
+                return 0, "Controller AA:BB:CC:DD:EE:FF\n\tPowered: yes\n"
+            if cmd[:2] == ["bluetoothctl", "devices"]:
+                return 0, "Device 11:22:33:44:55:66 AirPods Pro\n"
+            if cmd[:2] == ["bluetoothctl", "info"]:
+                return 0, "Device 11:22:33:44:55:66\n\tPaired: yes\n\tConnected: yes\n\tIcon: audio-headset\n"
+            return orig_runner(cmd)
+
+        remote._runner = mock_runner  # type: ignore
+
+        r_streams = sess.get(f"{self.base_url}/api/remote/streams", timeout=5).json()
+        self.assertTrue(r_streams["ok"])
+        self.assertEqual(r_streams["streams"][0]["name"], "Spotify")
+        self.assertEqual(r_streams["streams"][0]["volume"], 75)
+        r_set_s = sess.post(f"{self.base_url}/api/remote/streams", json={"id": 42, "percent": 50}, timeout=5)
+        self.assertEqual(r_set_s.status_code, 200)
+
+        # 2. Window Switcher & Keep Awake (Caffeine)
+        r_wins = sess.get(f"{self.base_url}/api/remote/windows", timeout=5).json()
+        self.assertTrue(r_wins["ok"])
+        self.assertEqual(r_wins["windows"][0]["title"], "Visual Studio Code")
+        r_bad_win = sess.post(f"{self.base_url}/api/remote/windows", json={"id": "; rm -rf /", "action": "focus"}, timeout=5)
+        self.assertEqual(r_bad_win.status_code, 400)
+        r_ka = sess.post(f"{self.base_url}/api/remote/keep-awake", json={"enabled": True}, timeout=5).json()
+        self.assertTrue(r_ka["enabled"])
+        r_ka_off = sess.post(f"{self.base_url}/api/remote/keep-awake", json={"enabled": False}, timeout=5).json()
+        self.assertFalse(r_ka_off["enabled"])
+
+        # 3. 2-Way File Explorer: Create Folder + Direct Streaming Upload + Security Block
+        r_mk = sess.post(
+            f"{self.base_url}/api/explorer/mkdir",
+            json={"root": "LANShare", "path": "", "name": "Kuliah2026"},
+            timeout=5,
+        )
+        self.assertEqual(r_mk.status_code, 200)
+        self.assertTrue((self.receive_dir / "Kuliah2026").is_dir())
+        # Hidden dotfile & traversal folder names strictly rejected
+        self.assertEqual(
+            sess.post(f"{self.base_url}/api/explorer/mkdir", json={"root": "LANShare", "path": "", "name": ".secret"}, timeout=5).status_code,
+            400,
+        )
+        r_up = sess.post(
+            f"{self.base_url}/api/explorer/upload?root=LANShare&path=Kuliah2026",
+            headers={"X-Filename": "catatan.txt"},
+            data=b"hello explorer upload",
+            timeout=5,
+        )
+        self.assertEqual(r_up.status_code, 200)
+        self.assertEqual((self.receive_dir / "Kuliah2026" / "catatan.txt").read_bytes(), b"hello explorer upload")
+
+        # 5. Bluetooth Quick Connect + Strict MAC validation
+        r_bt = sess.get(f"{self.base_url}/api/remote/bluetooth", timeout=5).json()
+        self.assertTrue(r_bt["ok"])
+        self.assertTrue(r_bt["powered"])
+        self.assertEqual(r_bt["devices"][0]["name"], "AirPods Pro")
+        self.assertEqual(
+            sess.post(f"{self.base_url}/api/remote/bluetooth", json={"action": "connect", "mac": "bad-mac"}, timeout=5).status_code,
+            400,
+        )
+
+        # 6. 2-Way Image Clipboard (Phone -> Linux PNG & GET back)
+        received_clip_imgs: list[bytes] = []
+        self.server.state.on_mobile_clipboard_image = lambda b, _src: received_clip_imgs.append(b)
+        buf = io.BytesIO()
+        Image.new("RGB", (64, 64), color=(10, 132, 255)).save(buf, format="PNG")
+        png_data = buf.getvalue()
+        r_cimg = sess.post(f"{self.base_url}/api/clipboard/image", data=png_data, timeout=5)
+        self.assertEqual(r_cimg.status_code, 200)
+        self.assertEqual(len(received_clip_imgs), 1)
+        r_get_img = sess.get(f"{self.base_url}/api/clipboard/image", timeout=5)
+        self.assertEqual(r_get_img.status_code, 200)
+        self.assertEqual(r_get_img.headers["Content-Type"], "image/png")
+
+        # 7. Battery Full Guard + SSD Disk Telemetry
+        r_bg = sess.post(f"{self.base_url}/api/remote/battery-guard", json={"percent": 90}, timeout=5).json()
+        self.assertEqual(r_bg["battery_guard_percent"], 90)
+        self.assertIn("disk_free_gb", r_bg["telemetry"])
+
+        # 8. Screen Recorder status endpoint
+        r_rec = sess.get(f"{self.base_url}/api/remote/screen/record", timeout=5).json()
+        self.assertTrue(r_rec["ok"])
+        self.assertIn("recording", r_rec)
+
 
 if __name__ == "__main__":
     unittest.main()

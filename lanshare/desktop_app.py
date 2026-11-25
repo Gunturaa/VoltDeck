@@ -348,6 +348,7 @@ class LANShareApplication(Gtk.Application):
         self.indicator = None
         self._gtk_clipboard: Optional[Gtk.Clipboard] = None
         self._last_system_clip_hash: str = ""
+        self._last_system_img_hash: str = ""
         self._clip_timer_id: Optional[int] = None
 
     def do_startup(self) -> None:
@@ -367,6 +368,7 @@ class LANShareApplication(Gtk.Application):
         self.server = LANShareServer(
             config=self.config,
             on_mobile_clipboard=self._on_mobile_clipboard_received,
+            on_mobile_clipboard_image=self._on_mobile_clipboard_image_received,
             on_notify=self._on_notify_request,
             on_open_url=self._on_open_url_received,
         )
@@ -475,11 +477,29 @@ class LANShareApplication(Gtk.Application):
         if not self.config.clipboard_auto_sync:
             return
         clipboard.request_text(self._handle_gtk_clipboard_text)
+        clipboard.request_image(self._handle_gtk_clipboard_image)
 
     def _poll_gtk_clipboard(self) -> bool:
         if self.config.clipboard_auto_sync and self._gtk_clipboard is not None:
             self._gtk_clipboard.request_text(self._handle_gtk_clipboard_text)
         return True
+
+    def _handle_gtk_clipboard_image(self, _clipboard: Gtk.Clipboard, pixbuf: Optional[GdkPixbuf.Pixbuf]) -> None:
+        if pixbuf is None or self.server is None:
+            return
+        try:
+            ok, buf = pixbuf.save_to_bufferv("png", [], [])
+            if not ok or not buf:
+                return
+            png_bytes = bytes(buf)
+            digest = ClipboardStore.hash_bytes(png_bytes)
+            if digest == self._last_system_img_hash:
+                return
+            self._last_system_img_hash = digest
+            if digest != self.server.state.clipboard.latest_image_hash():
+                self.server.state.push_desktop_clipboard_image(png_bytes)
+        except Exception:
+            pass
 
     def _handle_gtk_clipboard_text(self, _clipboard: Gtk.Clipboard, text: Optional[str]) -> None:
         if not text or not text.strip() or self.server is None:
@@ -499,11 +519,35 @@ class LANShareApplication(Gtk.Application):
         self._gtk_clipboard.set_text(text, -1)
         self._gtk_clipboard.store()
 
+    def set_system_clipboard_image(self, png_bytes: bytes) -> None:
+        """Write PNG bytes directly to Linux Mint's GTK clipboard so user can Ctrl+V immediately."""
+        if self._gtk_clipboard is None or not png_bytes:
+            return
+        try:
+            loader = GdkPixbuf.PixbufLoader.new()
+            loader.write(png_bytes)
+            loader.close()
+            pixbuf = loader.get_pixbuf()
+            if pixbuf is None:
+                return
+            self._last_system_img_hash = ClipboardStore.hash_bytes(png_bytes)
+            self._gtk_clipboard.set_image(pixbuf)
+            self._gtk_clipboard.store()
+        except Exception:
+            pass
+
     def _on_mobile_clipboard_received(self, text: str, _source: str) -> None:
         GLib.idle_add(self._apply_mobile_clipboard_idle, text)
 
     def _apply_mobile_clipboard_idle(self, text: str) -> bool:
         self.set_system_clipboard(text)
+        return False
+
+    def _on_mobile_clipboard_image_received(self, png_bytes: bytes, _source: str) -> None:
+        GLib.idle_add(self._apply_mobile_clipboard_image_idle, png_bytes)
+
+    def _apply_mobile_clipboard_image_idle(self, png_bytes: bytes) -> bool:
+        self.set_system_clipboard_image(png_bytes)
         return False
 
     def _on_open_url_received(self, url: str, source: str) -> None:

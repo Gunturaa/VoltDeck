@@ -53,22 +53,25 @@
   - **Paste Screenshot (`Ctrl+V`)** directly from the Linux Mint clipboard straight to connected devices.
   - Dedicated **Camera** button on mobile browsers (iOS & Android) to snap documents/notes straight to your laptop.
 
-### 📋 Two-Way Shared Clipboard + Open Link on Laptop
-- Automatic Linux Mint `Gtk.Clipboard` sync to iOS, Android, and desktop browsers (with HTTP-compatible one-tap copy fallback).
+### 📋 Two-Way Shared Clipboard (Text + Images) + Open Link on Laptop
+- Automatic Linux Mint `Gtk.Clipboard` text & image sync to iOS, Android, and desktop browsers (with HTTP-compatible one-tap copy fallback).
+- **2-Way Image Clipboard:** Copy a screenshot on Linux → preview & save PNG on your phone; or pick any photo on your phone → send straight to Linux `Gtk.Clipboard` ready to `Ctrl+V` into Figma, Docs, or WhatsApp Web!
 - Paste any WhatsApp message or link on your phone → tap **`Buka di Laptop`** to open safe `http(s)://` URLs directly in your default Linux Mint browser.
 
-### 🖼️ Laptop Gallery, File Explorer & Instant Capture
-- **Sandboxed File Explorer:** Browse safe laptop directories (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Videos`, `LANShare`), search within folders, and stream-download PDFs, DOCX, ZIPs, and more straight to your phone (hidden dotfiles and path traversal are strictly blocked).
+### 🖼️ Two-Way Laptop File Explorer, Gallery & Instant Capture
+- **2-Way Sandboxed File Explorer:** Browse safe laptop directories (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Videos`, `LANShare`), search within folders, **upload files straight into any subfolder**, **create new folders**, and stream-download PDFs, DOCX, ZIPs, and more (hidden dotfiles and path traversal are strictly blocked).
 - **Photo Gallery:** Browse and pull images directly from laptop folders in a responsive thumbnail grid with safe-area lightbox preview.
 - **Instant Capture:** One-tap **Laptop Webcam Capture** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) and **Desktop Screenshot** straight to your phone.
 
 ### 🎛️ Complete Remote Control Deck
-- **Real-Time Telemetry & 1.5s Live Sync:** Monitor laptop **Battery (+ charging status)**, **CPU %**, **RAM %**, and **Temperature (°C)** while **Media, Volume, and Brightness** sync automatically in real time whenever the Remote tab is active (0% idle polling when closed).
-- **Smart Sticky Media & Audio:** Play/Pause, Next/Previous, and `±10s` Seek via Session D-Bus **MPRIS2** (Spotify, Chrome/YouTube, VLC, Celluloid) with **sticky active-player tracking** (pausing Spotify stays locked on Spotify instead of jumping to Chrome) + **1-tap multi-player switcher chips**, volume slider, and **Audio Output Sink Switcher** (Speakers ↔ Headset/Bluetooth via `pactl`).
+- **Real-Time Telemetry, SSD & Battery Full Guard:** Monitor laptop **Battery (+ charging status)**, **CPU %**, **RAM %**, **SSD Free Space**, and **Temperature (°C)** with **1.5s live sync** and a **Battery Full Guard (`90%` / `95%`)** unplug reminder.
+- **Smart Sticky Media, Audio & Per-App Volume Mixer:** Play/Pause, Next/Previous, and `±10s` Seek via Session D-Bus **MPRIS2** (Spotify, Chrome/YouTube, VLC, Celluloid) with **sticky active-player tracking** + **multi-player switcher chips**, master volume + **Per-App Volume Mixer** (`pactl sink-inputs` for Spotify/Chrome/Discord individually), and **Audio Output Sink Switcher** (Speakers ↔ Headset/Bluetooth).
+- **Bluetooth Quick Connect (Control Center):** Toggle laptop Bluetooth power and 1-tap connect/disconnect paired devices (AirPods/TWS, headsets, speakers via `bluetoothctl`).
+- **Window Switcher, Smart Deck & Keep Awake (Caffeine):** List open desktop windows (`wmctrl`) to focus or close in 1 tap, trigger quick shortcuts (`Alt+Tab`, `Show Desktop`, `Fullscreen F11`), and toggle **Keep Awake** (`systemd-inhibit` + `xset`) to keep your laptop awake during downloads or presentations.
 - **Display, 1-Tap Privacy Mode & Safe Power Controls:** Brightness slider, **Display Off** (`DPMS`), **1-Tap Privacy Mode** (*Pause media + Mute audio + Lock screen + Display Off*), **Lock Screen**, **Sleep**, **Restart**, and **Shutdown** protected by 2-step confirmation, selectable timer (`15s / 15m / 30m / 60m`), and a live cancel button on both phone and desktop.
 - **App Launcher & Quick Web Shortcuts:** Launch installed Linux desktop apps (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, etc.) via a strict binary allowlist, or open **YouTube, GitHub, WhatsApp Web, ChatGPT, and Gmail** on your laptop in one tap.
 - **On-Demand RAM Task Monitor:** Inspect top memory-consuming user processes on demand and safely terminate frozen apps with 2-tap confirmation (core system/desktop daemons are strictly protected).
-- **Live Screen View (MJPEG):** Stream your Linux Mint screen live in Safari, Chrome, or Firefox (`2 / 5 / 8 FPS`) with optional **Tap-to-Click** cursor interaction.
+- **Live Screen View (MJPEG) & 1-Tap Screen Recorder:** Stream your Linux Mint screen live in Safari, Chrome, or Firefox (`2 / 5 / 8 FPS`) with optional **Tap-to-Click**, or record your laptop screen in 1 tap (`ffmpeg` MP4 / native GStreamer WebM) straight into your download queue!
 - **Touchpad & Presentation Clicker:** Touch/mouse trackpad via X11 `XTest`, presentation keys (`Prev / Next / F5 / Esc`), and remote keyboard typing.
 
 ### 🌐 Dual-Mode Access & Security
@@ -169,7 +172,7 @@ sudo ufw allow in on tailscale0 to any port 8765 proto tcp comment 'VoltDeck Tai
 │   ├── desktop_app.py            # GTK3 + WebKit2 Single-Instance app & Ayatana System Tray
 │   └── web/                      # Desktop & All-Device Responsive Web UI (HTML/CSS/JS)
 └── tests/
-    └── test_core.py              # End-to-end automated test suite (15 test cases)
+    └── test_core.py              # End-to-end automated test suite (16 test cases)
 ```
 
 ---

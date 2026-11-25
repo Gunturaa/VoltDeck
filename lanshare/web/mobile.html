@@ -263,12 +263,34 @@
         </div>
       </div>
 
-      <!-- Sub-View B: Sandboxed Laptop File Explorer (PDF, DOCX, ZIP, dll.) -->
+      <!-- Sub-View B: Sandboxed Laptop File Explorer (2-Way Browse, Upload & Mkdir) -->
       <div id="g-panel-explorer" class="hidden" style="display:flex;flex-direction:column;gap:12px">
         <div class="send-card">
           <div class="send-card-head">
             <span class="m-section-label" data-i18n="explorer_title">Jelajah File Laptop</span>
-            <button class="btn btn-sm" id="btn-exp-refresh" data-i18n="refresh" type="button">Muat Ulang</button>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="btn btn-sm btn-primary" id="btn-exp-upload" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span data-i18n="exp_upload">Unggah</span>
+              </button>
+              <button class="btn btn-sm" id="btn-exp-mkdir" type="button" title="Folder Baru">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  <line x1="12" y1="11" x2="12" y2="17"></line>
+                  <line x1="9" y1="14" x2="15" y2="14"></line>
+                </svg>
+              </button>
+              <button class="btn btn-sm" id="btn-exp-refresh" data-i18n="refresh" type="button">Muat Ulang</button>
+            </div>
+          </div>
+          <input type="file" id="input-exp-upload" class="hidden" multiple />
+          <div class="r-type-row hidden" id="exp-mkdir-row">
+            <input type="text" id="exp-mkdir-input" class="r-text-input" data-i18n-placeholder="exp_mkdir_placeholder" placeholder="Nama folder baru..." />
+            <button class="btn btn-primary btn-sm" id="btn-exp-mkdir-go" data-i18n="exp_mkdir_create" type="button" style="height:40px;padding:0 12px">Buat</button>
           </div>
           <div class="gallery-folders" id="exp-roots" style="padding-bottom:2px"></div>
           <div class="exp-bar">
@@ -318,6 +340,27 @@
               </button>
             </div>
           </div>
+
+          <!-- 2-Way Image Clipboard (Screenshot <-> Ctrl+V on Laptop) -->
+          <div class="m-clip-compose" id="m-clip-img-card">
+            <div class="section-row" style="margin-bottom:0">
+              <span class="m-section-label" data-i18n="clip_img_title">Clipboard Gambar (2 Arah)</span>
+              <span class="tag" id="m-clip-img-src">CTRL+V</span>
+            </div>
+            <div class="clip-img-preview-wrap hidden" id="m-clip-img-wrap">
+              <img id="m-clip-img-preview" class="clip-img-preview" alt="Clipboard Image" />
+              <a class="btn btn-sm" id="btn-clip-img-dl" data-i18n="clip_img_save" href="/api/clipboard/image?download=1">Simpan PNG</a>
+            </div>
+            <button class="btn m-clip-btn" id="btn-clip-img-send" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span data-i18n="clip_img_send">Kirim Foto ke Clipboard Laptop (Ctrl+V)</span>
+            </button>
+            <input type="file" id="input-clip-img" class="hidden" accept="image/*" />
+          </div>
         </div>
 
         <div class="clip-col-hist">
@@ -345,8 +388,8 @@
       </div>
 
       <div id="m-remote-body" style="display:flex;flex-direction:column;gap:12px">
-        <!-- Compact System Telemetry Strip -->
-        <div class="telemetry-strip" id="r-telemetry">
+        <!-- Compact System Telemetry Strip (Battery, CPU, RAM, SSD, Temp) -->
+        <div class="telemetry-strip telemetry-strip-5" id="r-telemetry">
           <div class="tele-cell">
             <span class="tele-k" data-i18n="tele_bat">BATERAI</span>
             <span class="tele-v mono" id="t-bat">—</span>
@@ -358,6 +401,10 @@
           <div class="tele-cell">
             <span class="tele-k" data-i18n="tele_ram">RAM</span>
             <span class="tele-v mono" id="t-ram">—</span>
+          </div>
+          <div class="tele-cell">
+            <span class="tele-k" data-i18n="tele_disk">SSD</span>
+            <span class="tele-v mono" id="t-disk">—</span>
           </div>
           <div class="tele-cell">
             <span class="tele-k" data-i18n="tele_temp">SUHU</span>
@@ -423,15 +470,27 @@
               <button class="btn r-ctrl-btn" id="btn-vol-up" type="button">+5%</button>
             </div>
             <select id="r-sink-select" class="r-select hidden" aria-label="Audio Output"></select>
+            <div class="mixer-section">
+              <div class="send-card-head" style="margin-top:4px">
+                <span class="r-delay-label" data-i18n="mixer_title">Mixer Per Aplikasi</span>
+                <button class="btn btn-sm btn-ghost" id="btn-streams-refresh" data-i18n="refresh" type="button" style="height:24px;font-size:11px">Muat Ulang</button>
+              </div>
+              <div class="mixer-list" id="r-streams-list"></div>
+            </div>
           </div>
 
-          <!-- Screen Brightness & Display Off -->
+          <!-- Screen Brightness, Keep Awake (Caffeine) & Display Off -->
           <div class="remote-card">
             <div class="send-card-head">
               <span class="m-section-label" data-i18n="bright_title">Kecerahan & Layar</span>
               <span class="mono r-vol-val" id="r-bright-val">—%</span>
             </div>
             <input type="range" id="r-bright-slider" class="r-slider" min="10" max="100" value="80" />
+            <label class="toggle" style="justify-content:space-between;padding:4px 2px">
+              <span class="toggle-label" style="color:var(--text-primary);font-size:12.5px" data-i18n="keep_awake_label">Keep Awake (Tahan Laptop Tetap Nyala)</span>
+              <input type="checkbox" id="toggle-keep-awake" />
+              <span class="toggle-track"></span>
+            </label>
             <button class="btn r-ctrl-btn" id="btn-display-off" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2"></rect>
@@ -441,6 +500,28 @@
               </svg>
               <span data-i18n="display_off_btn">Matikan Layar Saja (Laptop Tetap Nyala)</span>
             </button>
+          </div>
+
+          <!-- Bluetooth Quick Connect (Control Center) -->
+          <div class="remote-card" id="r-bt-card">
+            <div class="send-card-head">
+              <div style="display:flex;align-items:center;gap:6px">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"></polyline>
+                </svg>
+                <span class="m-section-label" data-i18n="bt_title">Bluetooth Laptop</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <button class="btn btn-sm btn-ghost" id="btn-bt-refresh" data-i18n="refresh" type="button" style="height:24px;font-size:11px">Muat Ulang</button>
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-bt-power" />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+            <div class="proc-list" id="r-bt-list">
+              <div class="m-empty" data-i18n="bt_hint">Ketuk Muat Ulang untuk cek perangkat Bluetooth.</div>
+            </div>
           </div>
 
           <!-- Power & Security Control -->
@@ -473,6 +554,15 @@
             </div>
 
             <div class="r-delay-section">
+              <div class="r-delay-label" data-i18n="bat_guard_label">Battery Full Guard (Ingatkan Cabut Charger)</div>
+              <div class="r-delay-chips" id="r-bat-guard-chips" style="grid-template-columns:repeat(3,1fr)">
+                <button class="delay-chip active" data-bat-guard="0" data-i18n="bat_guard_off" type="button">Off</button>
+                <button class="delay-chip" data-bat-guard="90" type="button">90%</button>
+                <button class="delay-chip" data-bat-guard="95" type="button">95%</button>
+              </div>
+            </div>
+
+            <div class="r-delay-section">
               <div class="r-delay-label" data-i18n="power_timer_label">Timer Matikan / Restart</div>
               <div class="r-delay-chips" id="r-delay-chips">
                 <button class="delay-chip active" data-delay="15" type="button">15s</button>
@@ -501,8 +591,23 @@
           </div>
         </div>
 
-        <!-- SUB-VIEW 1B: App Launcher, Quick Web Shortcuts & RAM Task Monitor -->
+        <!-- SUB-VIEW 1B: Window Switcher, App Launcher, Quick Web Shortcuts & RAM Task Monitor -->
         <div class="r-subpanel hidden" id="r-panel-apps">
+          <div class="remote-card">
+            <div class="send-card-head">
+              <span class="m-section-label" data-i18n="win_title">Jendela Aktif & Smart Deck</span>
+              <button class="btn btn-sm" id="btn-win-refresh" data-i18n="refresh" type="button">Muat Ulang</button>
+            </div>
+            <div class="quick-web-chips">
+              <button class="folder-chip" data-win-shortcut="alt_tab" type="button">Alt + Tab</button>
+              <button class="folder-chip" data-win-shortcut="show_desktop" data-i18n="win_show_desktop" type="button">Show Desktop</button>
+              <button class="folder-chip" data-win-shortcut="fullscreen" type="button">Fullscreen (F11)</button>
+            </div>
+            <div class="proc-list" id="r-win-list">
+              <div class="m-empty" data-i18n="win_empty">Ketuk Muat Ulang untuk melihat jendela terbuka.</div>
+            </div>
+          </div>
+
           <div class="remote-card">
             <div class="send-card-head">
               <span class="m-section-label" data-i18n="apps_title">Buka Aplikasi di Laptop</span>
@@ -557,6 +662,11 @@
               <button class="btn btn-primary r-ctrl-btn" id="btn-screen-live" data-i18n="start_live" type="button">Mulai Live</button>
               <button class="btn r-ctrl-btn" id="btn-screen-snap" data-i18n="snapshot_btn" type="button">Snapshot</button>
             </div>
+
+            <button class="btn r-ctrl-btn" id="btn-screen-record" type="button">
+              <span class="rec-dot" id="rec-dot"></span>
+              <span id="btn-screen-record-label" data-i18n="rec_start">Rekam Layar Laptop</span>
+            </button>
 
             <div class="screen-controls-row">
               <div class="r-fps-chips" id="r-fps-chips">

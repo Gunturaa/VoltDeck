@@ -12,7 +12,14 @@
     serverTransfers: [],
     localUploads: new Map(), // transferId -> {id, filename, total_bytes, transferred_bytes, percent, speed_bps, xhr, status}
     clipboard: [],
+    clipboardImage: null,
     remoteEnabled: true,
+    audioStreams: [],
+    windows: [],
+    bluetooth: { available: false, powered: false, devices: [] },
+    keepAwake: false,
+    recording: { available: false, recording: false, duration_sec: 0, filename: '' },
+    batGuardAlerted: false,
     power: { scheduled: false, action: null, execute_at: 0 },
     powerTick: null,
     selectedDelay: 15,
@@ -359,10 +366,12 @@
     state.files = data.files || [];
     state.serverTransfers = data.transfers || [];
     state.clipboard = data.clipboard || [];
+    state.clipboardImage = data.clipboard_image || null;
     state.remoteEnabled = data.remote_enabled !== false;
     renderFiles();
     renderTransfers();
     renderClipboard();
+    renderClipboardImage();
     renderPowerState(data.power);
     updateRemoteAvailability();
   }
@@ -383,11 +392,163 @@
       if (data.telemetry) renderTelemetry(data.telemetry);
       if (data.volume) renderVolume(data.volume);
       if (data.sinks) renderSinks(data.sinks);
+      if (data.audio_streams) renderAudioStreams(data.audio_streams);
       if (data.brightness) renderBrightness(data.brightness);
+      if (data.keep_awake) renderKeepAwake(data.keep_awake);
+      if (data.recording) renderRecording(data.recording);
       if (data.media) renderMedia(data.media);
       if (data.apps) renderApps(data.apps);
       if (data.power) renderPowerState(data.power);
     } catch {}
+  }
+
+  // --- Per-App Audio Mixer, Window Switcher, Keep Awake, Bluetooth, Recorder & Image Clipboard ---
+
+  async function refreshAudioStreams() {
+    if (!state.authenticated || !state.remoteEnabled) return;
+    try {
+      const res = await fetch('/api/remote/streams', { credentials: 'same-origin', headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderAudioStreams(data.streams || []);
+    } catch {}
+  }
+
+  function renderAudioStreams(streams) {
+    state.audioStreams = streams || [];
+    const el = $('r-streams-list');
+    if (!el) return;
+    if (state.audioStreams.length === 0) {
+      el.innerHTML = `<div class="m-empty" style="padding:10px">${escHtml(tr('mixer_empty'))}</div>`;
+      return;
+    }
+    el.innerHTML = state.audioStreams
+      .map((s) => `
+        <div class="mixer-row">
+          <div class="mixer-row-head">
+            <span class="mixer-app-name" title="${escHtml(s.name)}">${escHtml(s.name)}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="mono" style="font-size:11px;color:var(--text-secondary)" data-stream-val="${s.id}">${s.muted ? 'MUTE' : `${s.volume}%`}</span>
+              <button class="btn btn-sm ${s.muted ? 'btn-danger' : ''}" data-stream-mute="${s.id}" type="button" style="height:24px;padding:0 8px;font-size:11px">${s.muted ? 'Unmute' : 'Mute'}</button>
+            </div>
+          </div>
+          <input type="range" class="r-slider" data-stream-vol="${s.id}" min="0" max="100" value="${Math.min(100, s.volume)}" />
+        </div>`)
+      .join('');
+  }
+
+  async function refreshWindows() {
+    if (!state.authenticated || !state.remoteEnabled) return;
+    try {
+      const res = await fetch('/api/remote/windows', { credentials: 'same-origin', headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderWindows(data.windows || []);
+    } catch {}
+  }
+
+  function renderWindows(wins) {
+    state.windows = wins || [];
+    const el = $('r-win-list');
+    if (!el) return;
+    if (state.windows.length === 0) {
+      el.innerHTML = `<div class="m-empty">${escHtml(tr('win_empty'))}</div>`;
+      return;
+    }
+    el.innerHTML = state.windows
+      .map((w) => `
+        <div class="proc-row">
+          <div class="proc-info">
+            <div class="proc-name" title="${escHtml(w.title)}">${escHtml(w.title)}</div>
+          </div>
+          <div style="display:flex;gap:5px;flex-shrink:0">
+            <button class="btn btn-sm btn-primary" data-win-id="${escHtml(w.id)}" data-win-act="focus" type="button">${escHtml(tr('win_focus'))}</button>
+            <button class="btn btn-sm btn-danger" data-win-id="${escHtml(w.id)}" data-win-act="close" type="button" title="Close">✕</button>
+          </div>
+        </div>`)
+      .join('');
+  }
+
+  function renderKeepAwake(ka) {
+    state.keepAwake = Boolean(ka && ka.enabled);
+    if ($('toggle-keep-awake')) $('toggle-keep-awake').checked = state.keepAwake;
+  }
+
+  async function refreshBluetooth() {
+    if (!state.authenticated || !state.remoteEnabled) return;
+    try {
+      const res = await fetch('/api/remote/bluetooth', { credentials: 'same-origin', headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderBluetooth(data);
+    } catch {}
+  }
+
+  function renderBluetooth(bt) {
+    state.bluetooth = bt || { available: false, powered: false, devices: [] };
+    if ($('toggle-bt-power')) {
+      $('toggle-bt-power').checked = Boolean(state.bluetooth.powered);
+      $('toggle-bt-power').disabled = !state.bluetooth.available;
+    }
+    const el = $('r-bt-list');
+    if (!el) return;
+    if (!state.bluetooth.available) {
+      el.innerHTML = '<div class="m-empty">Bluetooth tidak terdeteksi di laptop.</div>';
+      return;
+    }
+    const devs = state.bluetooth.devices || [];
+    if (devs.length === 0) {
+      el.innerHTML = `<div class="m-empty">${escHtml(tr('bt_empty'))}</div>`;
+      return;
+    }
+    el.innerHTML = devs
+      .map((d) => `
+        <div class="proc-row">
+          <div class="proc-info" style="display:flex;align-items:center;gap:8px">
+            <span class="media-chip-dot ${d.connected ? 'playing' : ''}"></span>
+            <div style="min-width:0">
+              <div class="proc-name">${escHtml(d.name)}</div>
+              <div class="proc-meta">${escHtml(d.mac)}</div>
+            </div>
+          </div>
+          <button class="btn btn-sm ${d.connected ? 'btn-danger' : 'btn-primary'}" data-bt-mac="${escHtml(d.mac)}" data-bt-act="${d.connected ? 'disconnect' : 'connect'}" type="button">${escHtml(d.connected ? tr('bt_disconnect') : tr('bt_connect'))}</button>
+        </div>`)
+      .join('');
+  }
+
+  function renderRecording(rec) {
+    state.recording = rec || { available: false, recording: false, duration_sec: 0, filename: '' };
+    const btn = $('btn-screen-record');
+    const dot = $('rec-dot');
+    const lbl = $('btn-screen-record-label');
+    if (!btn || !lbl) return;
+    if (state.recording.recording) {
+      const s = Number(state.recording.duration_sec || 0);
+      const mm = String(Math.floor(s / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      btn.classList.add('btn-danger');
+      if (dot) dot.classList.add('active');
+      lbl.textContent = `${tr('rec_stop')} (${mm}:${ss})`;
+    } else {
+      btn.classList.remove('btn-danger');
+      if (dot) dot.classList.remove('active');
+      lbl.textContent = tr('rec_start');
+    }
+  }
+
+  function renderClipboardImage() {
+    const wrap = $('m-clip-img-wrap');
+    const img = $('m-clip-img-preview');
+    const src = $('m-clip-img-src');
+    if (!wrap || !img) return;
+    if (!state.clipboardImage) {
+      wrap.classList.add('hidden');
+      if (src) src.textContent = 'CTRL+V';
+      return;
+    }
+    wrap.classList.remove('hidden');
+    img.src = `/api/clipboard/image?id=${encodeURIComponent(state.clipboardImage.id)}`;
+    if (src) src.textContent = state.clipboardImage.source || 'IMAGE';
   }
 
   function renderApps(apps) {
@@ -579,7 +740,22 @@
     }
     $('t-cpu').textContent = `${Math.round(t.cpu_percent || 0)}%`;
     $('t-ram').textContent = `${Math.round(t.ram_percent || 0)}%`;
+    if ($('t-disk')) {
+      $('t-disk').textContent = t.disk_free_gb !== undefined ? `${Math.round(t.disk_free_gb)}G` : '—';
+    }
     $('t-temp').textContent = t.temp_c ? `${t.temp_c}°C` : '—';
+
+    if (t.battery_guard_percent !== undefined) {
+      document.querySelectorAll('[data-bat-guard]').forEach((b) => {
+        b.classList.toggle('active', Number(b.dataset.batGuard) === Number(t.battery_guard_percent));
+      });
+    }
+    if (t.battery_guard_triggered && !state.batGuardAlerted) {
+      state.batGuardAlerted = true;
+      toast(`Battery Guard: Baterai laptop sudah ${t.battery_percent}% — cabut charger!`, 'info');
+    } else if (!t.battery_guard_triggered) {
+      state.batGuardAlerted = false;
+    }
   }
 
   function renderSinks(sinks) {
@@ -619,6 +795,8 @@
       if (data.media) renderMedia(data.media);
       if (data.volume) renderVolume(data.volume);
       if (data.brightness) renderBrightness(data.brightness);
+      if (data.keep_awake) renderKeepAwake(data.keep_awake);
+      if (data.recording) renderRecording(data.recording);
     } catch {}
   }
 
@@ -765,7 +943,12 @@
       renderTransfers();
     });
     es.addEventListener('clipboard_updated', (e) => {
-      state.clipboard = JSON.parse(e.data).clipboard || [];
+      const payload = JSON.parse(e.data);
+      state.clipboard = payload.clipboard || [];
+      if ('clipboard_image' in payload) {
+        state.clipboardImage = payload.clipboard_image || null;
+        renderClipboardImage();
+      }
       renderClipboard();
     });
     es.addEventListener('power_changed', (e) => {
@@ -1156,6 +1339,78 @@
     });
 
     $('btn-exp-refresh').addEventListener('click', () => refreshExplorer(state.expRoot, state.expPath));
+    $('btn-exp-upload').addEventListener('click', () => $('input-exp-upload').click());
+    $('input-exp-upload').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      e.target.value = '';
+      if (!files.length || !state.expRoot) return;
+      for (const file of files) {
+        toast(`Mengunggah ${file.name}...`, 'info');
+        const url = `/api/explorer/upload?root=${encodeURIComponent(state.expRoot)}&path=${encodeURIComponent(state.expPath || '')}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: authHeaders({ 'X-Filename': encodeURIComponent(file.name) }),
+          body: file,
+        });
+        const d = await res.json().catch(() => ({ ok: false }));
+        if (res.ok && d.ok) {
+          state.expEntries = d.entries || state.expEntries;
+          renderExplorer();
+          toast(`Tersimpan di ${state.expRoot}: ${d.filename}`, 'success');
+        } else {
+          toast(d.error || 'Gagal mengunggah ke folder', 'error');
+        }
+      }
+    });
+    $('btn-exp-mkdir').addEventListener('click', () => {
+      const row = $('exp-mkdir-row');
+      row.classList.toggle('hidden');
+      if (!row.classList.contains('hidden')) $('exp-mkdir-input').focus();
+    });
+    $('btn-exp-mkdir-go').addEventListener('click', async () => {
+      const name = ($('exp-mkdir-input').value || '').trim();
+      if (!name) return;
+      const res = await fetch('/api/explorer/mkdir', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ root: state.expRoot, path: state.expPath, name }),
+      });
+      const d = await res.json().catch(() => ({ ok: false }));
+      if (res.ok && d.ok) {
+        $('exp-mkdir-input').value = '';
+        $('exp-mkdir-row').classList.add('hidden');
+        state.expEntries = d.entries || [];
+        renderExplorer();
+        toast(`Folder '${name}' dibuat`, 'success');
+      } else {
+        toast(d.error || 'Gagal membuat folder', 'error');
+      }
+    });
+
+    // 2-Way Image Clipboard (Phone -> Linux Gtk.Clipboard Ctrl+V)
+    $('btn-clip-img-send').addEventListener('click', () => $('input-clip-img').click());
+    $('input-clip-img').addEventListener('change', async (e) => {
+      const file = (e.target.files || [])[0];
+      e.target.value = '';
+      if (!file) return;
+      toast('Mengirim foto ke clipboard laptop...', 'info');
+      const res = await fetch('/api/clipboard/image', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: authHeaders(),
+        body: file,
+      });
+      const d = await res.json().catch(() => ({ ok: false }));
+      if (res.ok && d.ok) {
+        state.clipboardImage = d.clipboard_image;
+        renderClipboardImage();
+        toast('Siap di-Ctrl+V di laptop!', 'success');
+      } else {
+        toast(d.error || 'Gagal mengirim gambar clipboard', 'error');
+      }
+    });
     $('btn-exp-up').addEventListener('click', () => {
       if (state.expParent !== null && state.expParent !== undefined) {
         refreshExplorer(state.expRoot, state.expParent);
@@ -1208,7 +1463,11 @@
         $('r-panel-screen').classList.toggle('hidden', state.remoteSubTab !== 'screen');
         $('r-panel-touchpad').classList.toggle('hidden', state.remoteSubTab !== 'touchpad');
         if (state.remoteSubTab === 'apps') {
+          refreshWindows();
           refreshProcesses();
+        }
+        if (state.remoteSubTab === 'controls') {
+          refreshAudioStreams();
         }
         if (state.remoteSubTab !== 'screen') {
           stopScreenLive();
@@ -1217,6 +1476,92 @@
     });
 
     $('btn-proc-refresh').addEventListener('click', () => refreshProcesses());
+    $('btn-streams-refresh').addEventListener('click', () => refreshAudioStreams());
+    $('btn-win-refresh').addEventListener('click', () => refreshWindows());
+    $('btn-bt-refresh').addEventListener('click', () => refreshBluetooth());
+
+    $('toggle-keep-awake').addEventListener('change', async (e) => {
+      const data = await postRemote('/api/remote/keep-awake', { enabled: e.target.checked });
+      if (data) {
+        renderKeepAwake(data);
+        toast(data.enabled ? 'Keep Awake aktif (laptop tetap menyala)' : 'Keep Awake dinonaktifkan', 'info');
+      }
+    });
+
+    $('toggle-bt-power').addEventListener('change', async (e) => {
+      const data = await postRemote('/api/remote/bluetooth', { action: 'power', power: e.target.checked });
+      if (data) renderBluetooth(data);
+    });
+
+    $('r-bat-guard-chips').addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-bat-guard]');
+      if (!btn) return;
+      const pct = Number(btn.dataset.batGuard);
+      const data = await postRemote('/api/remote/battery-guard', { percent: pct });
+      if (data) {
+        if (data.telemetry) renderTelemetry(data.telemetry);
+        toast(pct > 0 ? `Battery Guard aktif di ${pct}%` : 'Battery Guard dimatikan', 'info');
+      }
+    });
+
+    $('btn-screen-record').addEventListener('click', async () => {
+      const isRec = Boolean(state.recording && state.recording.recording);
+      const data = await postRemote('/api/remote/screen/record', { action: isRec ? 'stop' : 'start' });
+      if (!data) return;
+      if (isRec) {
+        renderRecording(data.recording || { recording: false });
+        toast(`Rekaman disimpan (${data.filename}) — siap unduh di tab File!`, 'success');
+      } else {
+        renderRecording(data);
+        toast('Rekaman layar laptop dimulai!', 'info');
+      }
+    });
+
+    let streamDebounce = null;
+    $('r-streams-list').addEventListener('input', (e) => {
+      const slider = e.target.closest('[data-stream-vol]');
+      if (!slider) return;
+      const sid = Number(slider.dataset.streamVol);
+      const val = Number(slider.value);
+      const lbl = $('r-streams-list').querySelector(`[data-stream-val="${sid}"]`);
+      if (lbl) lbl.textContent = `${val}%`;
+      if (streamDebounce) clearTimeout(streamDebounce);
+      streamDebounce = setTimeout(async () => {
+        await postRemote('/api/remote/streams', { id: sid, percent: val });
+      }, 90);
+    });
+    $('r-streams-list').addEventListener('click', async (e) => {
+      const muteBtn = e.target.closest('[data-stream-mute]');
+      if (!muteBtn) return;
+      const sid = Number(muteBtn.dataset.streamMute);
+      const data = await postRemote('/api/remote/streams', { id: sid, mute_toggle: true });
+      if (data && data.streams) renderAudioStreams(data.streams);
+    });
+
+    $('r-bt-list').addEventListener('click', async (e) => {
+      const btBtn = e.target.closest('[data-bt-mac]');
+      if (!btBtn) return;
+      const mac = btBtn.dataset.btMac;
+      const act = btBtn.dataset.btAct;
+      toast(act === 'connect' ? 'Menyambungkan Bluetooth...' : 'Memutus Bluetooth...', 'info');
+      const data = await postRemote('/api/remote/bluetooth', { action: act, mac });
+      if (data) {
+        renderBluetooth(data);
+        toast(act === 'connect' ? 'Bluetooth tersambung!' : 'Bluetooth diputus', 'success');
+      }
+    });
+
+    $('r-win-list').addEventListener('click', async (e) => {
+      const wBtn = e.target.closest('[data-win-id]');
+      if (!wBtn) return;
+      const data = await postRemote('/api/remote/windows', { id: wBtn.dataset.winId, action: wBtn.dataset.winAct });
+      if (data && data.windows) renderWindows(data.windows);
+    });
+    document.querySelectorAll('[data-win-shortcut]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await postRemote('/api/remote/windows', { shortcut: btn.dataset.winShortcut });
+      });
+    });
 
     $('btn-privacy-mode').addEventListener('click', async () => {
       const data = await postRemote('/api/remote/privacy-mode', {});

@@ -362,6 +362,63 @@ class FileStorageManager:
             "entries": (folders + files)[:limit],
         }
 
+    def create_explorer_folder(self, root_name: str, rel_path: str, folder_name: str) -> tuple[bool, str, Optional[dict]]:
+        """Safely create a new non-hidden subfolder inside an allowlisted Explorer directory."""
+        resolved = self.resolve_explorer_path(root_name, rel_path)
+        if not resolved:
+            return False, "Folder tujuan tidak ditemukan.", None
+        chosen_root, root_dir, parent_dir = resolved
+        if not parent_dir.is_dir():
+            return False, "Lokasi tujuan bukan folder.", None
+
+        raw = str(folder_name or "").strip()
+        if not raw or raw.startswith(".") or "/" in raw or "\\" in raw or ".." in raw:
+            return False, "Nama folder tidak valid.", None
+        clean = re.sub(r"[\x00-\x1f\x7f<>:\"|?*]+", "_", raw).strip(" .")[:80]
+        if not clean:
+            return False, "Nama folder tidak valid.", None
+
+        target = (parent_dir / clean).resolve()
+        try:
+            if not target.is_relative_to(root_dir):
+                return False, "Akses ditolak.", None
+            target.mkdir(exist_ok=False)
+        except FileExistsError:
+            return False, f"Folder '{clean}' sudah ada.", None
+        except OSError as exc:
+            return False, f"Gagal membuat folder: {exc}", None
+
+        return True, "", self.list_explorer_dir(chosen_root, rel_path)
+
+    def reserve_explorer_upload_target(
+        self,
+        root_name: str,
+        rel_path: str,
+        raw_filename: str,
+    ) -> Optional[Path]:
+        """Return a collision-safe target file path inside an allowlisted Explorer directory."""
+        resolved = self.resolve_explorer_path(root_name, rel_path)
+        if not resolved:
+            return None
+        _chosen_root, root_dir, target_dir = resolved
+        if not target_dir.is_dir():
+            return None
+        safe_name = sanitize_filename(raw_filename)
+        stem = Path(safe_name).stem
+        suffix = Path(safe_name).suffix
+        candidate = (target_dir / safe_name).resolve()
+        counter = 1
+        while candidate.exists():
+            candidate = (target_dir / f"{stem} ({counter}){suffix}").resolve()
+            counter += 1
+        try:
+            if not candidate.is_relative_to(root_dir):
+                return None
+        except AttributeError:  # pragma: no cover
+            if root_dir not in candidate.parents:
+                return None
+        return candidate
+
     def get_gallery_thumbnail_jpeg(self, gid: str) -> Optional[bytes]:
         with self._lock:
             if gid in self._gallery_thumb_cache:

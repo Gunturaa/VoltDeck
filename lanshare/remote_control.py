@@ -6,6 +6,7 @@ import io
 import os
 import re
 import shutil
+import signal
 import subprocess
 import tempfile
 import threading
@@ -60,6 +61,14 @@ class RemoteControlManager:
         # Sticky MPRIS2 player tracking (prevents jumping from Spotify -> Chrome on pause)
         self._last_mpris_bus: Optional[str] = None
         self._last_playing_buses: set[str] = set()
+        # Keep Awake (Caffeine), Battery Guard alert state, and Screen Recorder subprocess
+        self._inhibit_proc: Optional[subprocess.Popen] = None
+        self._keep_awake: bool = False
+        self._battery_guard_percent: int = 0
+        self._battery_alerted: bool = False
+        self._rec_proc: Optional[subprocess.Popen] = None
+        self._rec_path: Optional[Path] = None
+        self._rec_started_at: float = 0.0
         # Prime psutil CPU counter
         if psutil is not None:
             try:
@@ -199,6 +208,13 @@ class RemoteControlManager:
     # 1. System Telemetry (Battery, CPU, RAM, Temperature)
     # =========================================================================
 
+    def set_battery_guard(self, percent: int) -> int:
+        val = int(percent) if int(percent) in (0, 80, 85, 90, 95, 100) else 0
+        with self._lock:
+            self._battery_guard_percent = val
+            self._battery_alerted = False
+        return val
+
     def get_telemetry(self) -> dict[str, Any]:
         if psutil is None:
             return {"available": False}
@@ -207,6 +223,9 @@ class RemoteControlManager:
         ram_pct = 0.0
         ram_used_gb = 0.0
         ram_total_gb = 0.0
+        disk_pct = 0.0
+        disk_free_gb = 0.0
+        disk_total_gb = 0.0
         battery_pct: Optional[int] = None
         battery_plugged: Optional[bool] = None
         temp_c: Optional[int] = None
@@ -221,6 +240,14 @@ class RemoteControlManager:
             ram_pct = round(vm.percent, 1)
             ram_used_gb = round((vm.total - vm.available) / (1024 ** 3), 1)
             ram_total_gb = round(vm.total / (1024 ** 3), 1)
+        except Exception:
+            pass
+
+        try:
+            du = psutil.disk_usage(str(Path.home()))
+            disk_pct = round(du.percent, 1)
+            disk_free_gb = round(du.free / (1024 ** 3), 1)
+            disk_total_gb = round(du.total / (1024 ** 3), 1)
         except Exception:
             pass
 
@@ -250,14 +277,37 @@ class RemoteControlManager:
         except Exception:
             pass
 
+        guard_triggered = False
+        with self._lock:
+            guard_pct = self._battery_guard_percent
+            if guard_pct > 0 and battery_pct is not None and battery_plugged:
+                if battery_pct >= guard_pct:
+                    guard_triggered = True
+                    if not self._battery_alerted:
+                        self._battery_alerted = True
+                        if self._on_notify:
+                            self._on_notify(
+                                "Baterai Penuh (Battery Guard)",
+                                f"Baterai laptop sudah mencapai {battery_pct}%. Silakan cabut charger agar baterai tetap awet.",
+                            )
+                elif battery_pct <= max(0, guard_pct - 4):
+                    self._battery_alerted = False
+            elif not battery_plugged:
+                self._battery_alerted = False
+
         return {
             "available": True,
             "cpu_percent": cpu_pct,
             "ram_percent": ram_pct,
             "ram_used_gb": ram_used_gb,
             "ram_total_gb": ram_total_gb,
+            "disk_percent": disk_pct,
+            "disk_free_gb": disk_free_gb,
+            "disk_total_gb": disk_total_gb,
             "battery_percent": battery_pct,
             "battery_plugged": battery_plugged,
+            "battery_guard_percent": guard_pct,
+            "battery_guard_triggered": guard_triggered,
             "temp_c": temp_c,
         }
 
@@ -376,6 +426,76 @@ class RemoteControlManager:
                     self._runner(["pactl", "move-sink-input", parts[0], sink_name])
 
         return {"ok": True, "sinks": self.list_audio_sinks(), "volume": self.get_volume()}
+
+    def list_audio_streams(self) -> list[dict[str, Any]]:
+        """List active per-app PulseAudio/PipeWire audio streams (Spotify, Chrome, VLC, Discord)."""
+        if not shutil.which("pactl"):
+            return []
+        rc, out = self._runner(["pactl", "list", "sink-inputs"])
+        if rc != 0 or not out:
+            return []
+        streams: list[dict[str, Any]] = []
+        cur_id: Optional[int] = None
+        cur_muted = False
+        cur_vol = 100
+        cur_app = ""
+        cur_media = ""
+
+        def _flush() -> None:
+            if cur_id is not None:
+                label = cur_app or cur_media or f"App #{cur_id}"
+                streams.append(
+                    {
+                        "id": cur_id,
+                        "name": label[:42],
+                        "volume": min(150, max(0, cur_vol)),
+                        "muted": cur_muted,
+                    }
+                )
+
+        for line in out.splitlines():
+            s = line.strip()
+            m_id = re.match(r"^Sink Input #(\d+)", s)
+            if m_id:
+                _flush()
+                cur_id = int(m_id.group(1))
+                cur_muted = False
+                cur_vol = 100
+                cur_app = ""
+                cur_media = ""
+            elif s.startswith("Mute:"):
+                cur_muted = "yes" in s.lower()
+            elif s.startswith("Volume:"):
+                mv = re.search(r"(\d+)%", s)
+                if mv:
+                    cur_vol = int(mv.group(1))
+            elif s.startswith("application.name ="):
+                cur_app = s.split("=", 1)[1].strip().strip('"')
+            elif s.startswith("media.name ="):
+                cur_media = s.split("=", 1)[1].strip().strip('"')
+        _flush()
+        return streams
+
+    def set_audio_stream(
+        self,
+        stream_id: int,
+        percent: Optional[int] = None,
+        mute_toggle: bool = False,
+    ) -> dict[str, Any]:
+        """Set per-app volume or mute for an active audio stream ID."""
+        if not shutil.which("pactl"):
+            return {"ok": False, "error": "pactl tidak tersedia."}
+        sid = int(stream_id)
+        current = self.list_audio_streams()
+        if sid not in {s["id"] for s in current}:
+            return {"ok": False, "error": "Aplikasi audio sudah tidak aktif."}
+        if mute_toggle:
+            self._runner(["pactl", "set-sink-input-mute", str(sid), "toggle"])
+        if percent is not None:
+            clamped = max(0, min(100, int(percent)))
+            self._runner(["pactl", "set-sink-input-mute", str(sid), "0"])
+            self._runner(["pactl", "set-sink-input-volume", str(sid), f"{clamped}%"])
+        return {"ok": True, "streams": self.list_audio_streams()}
 
     # =========================================================================
     # 3. Screen Brightness & Display Off
@@ -1033,12 +1153,14 @@ class RemoteControlManager:
                 )
 
     def get_live_status(self) -> dict[str, Any]:
-        """Lightweight live sync payload for active Remote tab (telemetry + media + volume + brightness)."""
+        """Lightweight live sync payload for active Remote tab (telemetry + media + volume + brightness + record)."""
         return {
             "telemetry": self.get_telemetry(),
             "media": self.get_media_status(),
             "volume": self.get_volume(),
             "brightness": self.get_brightness(),
+            "keep_awake": self.get_keep_awake(),
+            "recording": self.get_screen_record_status(),
         }
 
     def get_full_status(self, enabled: bool = True) -> dict[str, Any]:
@@ -1047,12 +1169,307 @@ class RemoteControlManager:
             "telemetry": self.get_telemetry(),
             "volume": self.get_volume(),
             "sinks": self.list_audio_sinks(),
+            "audio_streams": self.list_audio_streams(),
             "brightness": self.get_brightness(),
             "media": self.get_media_status(),
             "apps": self.list_launchable_apps(),
+            "keep_awake": self.get_keep_awake(),
+            "recording": self.get_screen_record_status(),
             "webcam_available": self.is_webcam_available(),
             "power": self.get_power_state(),
         }
+
+    # =========================================================================
+    # 7B. Window Switcher, Smart Shortcuts, Keep Awake (Caffeine), Bluetooth & Recorder
+    # =========================================================================
+
+    def list_open_windows(self) -> list[dict[str, Any]]:
+        """On-demand list of open desktop windows via wmctrl."""
+        if not shutil.which("wmctrl"):
+            return []
+        rc, out = self._runner(["wmctrl", "-lp"])
+        if rc != 0 or not out:
+            return []
+        windows: list[dict[str, Any]] = []
+        for line in out.splitlines():
+            parts = line.split(None, 4)
+            if len(parts) < 5:
+                continue
+            win_id, desktop, pid_str, _host, title = parts
+            if desktop == "-1":
+                continue
+            if not re.match(r"^0x[0-9a-fA-F]+$", win_id):
+                continue
+            clean_title = title.strip()
+            if not clean_title or clean_title.lower() in ("desktop", "cinnamon"):
+                continue
+            windows.append(
+                {
+                    "id": win_id,
+                    "pid": int(pid_str) if pid_str.isdigit() else 0,
+                    "title": clean_title[:72],
+                }
+            )
+        return windows[:20]
+
+    def window_action(self, win_id: str, action: str) -> dict[str, Any]:
+        """Focus, maximize, fullscreen, or close an open desktop window safely."""
+        if not shutil.which("wmctrl"):
+            return {"ok": False, "error": "wmctrl tidak terpasang."}
+        if not re.match(r"^0x[0-9a-fA-F]+$", str(win_id or "")):
+            return {"ok": False, "error": "ID jendela tidak valid."}
+        if action == "focus":
+            rc, err = self._runner(["wmctrl", "-i", "-a", win_id])
+        elif action == "close":
+            rc, err = self._runner(["wmctrl", "-i", "-c", win_id])
+        elif action == "maximize":
+            rc, err = self._runner(["wmctrl", "-i", "-r", win_id, "-b", "toggle,maximized_vert,maximized_horz"])
+        elif action == "fullscreen":
+            rc, err = self._runner(["wmctrl", "-i", "-r", win_id, "-b", "toggle,fullscreen"])
+        else:
+            return {"ok": False, "error": "Aksi jendela tidak dikenal."}
+        if rc != 0:
+            return {"ok": False, "error": err or "Gagal mengatur jendela."}
+        time.sleep(0.08)
+        return {"ok": True, "windows": self.list_open_windows()}
+
+    def quick_shortcut(self, name: str) -> dict[str, Any]:
+        """Execute common Linux desktop shortcuts cleanly."""
+        if name == "show_desktop":
+            if shutil.which("wmctrl"):
+                rc, out = self._runner(["wmctrl", "-m"])
+                is_showing = rc == 0 and "showing the desktop\" mode: on" in out.lower()
+                self._runner(["wmctrl", "-k", "off" if is_showing else "on"])
+                return {"ok": True, "shortcut": name}
+            return {"ok": False, "error": "wmctrl tidak tersedia."}
+        if name == "fullscreen":
+            return self.press_key("F11")
+        if name == "alt_tab":
+            if xdisplay is None or xtest is None or X is None or XK is None:
+                return {"ok": False, "error": "X11 input tidak tersedia."}
+            def _do(dpy: Any) -> None:
+                alt_code = dpy.keysym_to_keycode(XK.XK_Alt_L)
+                tab_code = dpy.keysym_to_keycode(XK.XK_Tab)
+                xtest.fake_input(dpy, X.KeyPress, alt_code)
+                xtest.fake_input(dpy, X.KeyPress, tab_code)
+                xtest.fake_input(dpy, X.KeyRelease, tab_code)
+                xtest.fake_input(dpy, X.KeyRelease, alt_code)
+            return self._with_xtest_display(_do)
+        return {"ok": False, "error": "Shortcut tidak dikenal."}
+
+    def get_keep_awake(self) -> dict[str, Any]:
+        with self._lock:
+            if self._inhibit_proc is not None and self._inhibit_proc.poll() is not None:
+                self._inhibit_proc = None
+                self._keep_awake = False
+            return {"enabled": self._keep_awake}
+
+    def set_keep_awake(self, enabled: bool, requested_by: str = "Phone") -> dict[str, Any]:
+        """Toggle Caffeine / Keep Awake via systemd-inhibit + xset (0% CPU)."""
+        with self._lock:
+            if enabled:
+                if self._inhibit_proc is None or self._inhibit_proc.poll() is not None:
+                    if shutil.which("systemd-inhibit"):
+                        try:
+                            self._inhibit_proc = subprocess.Popen(
+                                [
+                                    "systemd-inhibit",
+                                    "--what=idle:sleep",
+                                    "--who=VoltDeck",
+                                    "--why=Keep Awake enabled from VoltDeck",
+                                    "sleep",
+                                    "86400",
+                                ],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                                start_new_session=True,
+                            )
+                        except Exception:
+                            self._inhibit_proc = None
+                if shutil.which("xset"):
+                    self._runner(["xset", "s", "off", "-dpms"])
+                self._keep_awake = True
+                if self._on_notify:
+                    self._on_notify("Keep Awake Aktif", f"Laptop ditahan tetap menyala dari {requested_by}.")
+            else:
+                if self._inhibit_proc is not None:
+                    try:
+                        self._inhibit_proc.terminate()
+                        self._inhibit_proc.wait(timeout=1.5)
+                    except Exception:
+                        try:
+                            self._inhibit_proc.kill()
+                        except Exception:
+                            pass
+                    self._inhibit_proc = None
+                if shutil.which("xset"):
+                    self._runner(["xset", "s", "on", "+dpms"])
+                self._keep_awake = False
+        return {"ok": True, "enabled": self._keep_awake}
+
+    def list_bluetooth_devices(self) -> dict[str, Any]:
+        """On-demand Bluetooth controller & paired device status via bluetoothctl."""
+        if not shutil.which("bluetoothctl"):
+            return {"available": False, "powered": False, "devices": []}
+        rc_s, out_s = self._runner(["bluetoothctl", "show"])
+        if rc_s != 0 or "No default controller" in out_s:
+            return {"available": False, "powered": False, "devices": []}
+        powered = "Powered: yes" in out_s
+
+        rc_d, out_d = self._runner(["bluetoothctl", "devices"])
+        devices: list[dict[str, Any]] = []
+        if rc_d == 0 and out_d:
+            for line in out_d.splitlines():
+                m = re.match(r"^Device\s+([0-9A-Fa-f:]{17})\s+(.+)$", line.strip())
+                if not m:
+                    continue
+                mac, name = m.group(1).upper(), m.group(2).strip()
+                rc_i, out_i = self._runner(["bluetoothctl", "info", mac])
+                connected = rc_i == 0 and ("Connected: yes" in out_i)
+                paired = rc_i == 0 and ("Paired: yes" in out_i or "Trusted: yes" in out_i)
+                if not paired and not connected:
+                    continue
+                icon = "device"
+                mi = re.search(r"Icon:\s*(\S+)", out_i) if rc_i == 0 else None
+                if mi:
+                    icon = mi.group(1).lower()
+                devices.append({"mac": mac, "name": name[:40], "connected": connected, "icon": icon})
+        devices.sort(key=lambda d: (not d["connected"], d["name"].lower()))
+        return {"available": True, "powered": powered, "devices": devices}
+
+    def bluetooth_action(
+        self,
+        action: str,
+        mac: str = "",
+        power: Optional[bool] = None,
+    ) -> dict[str, Any]:
+        """Toggle Bluetooth power or connect/disconnect a paired device safely."""
+        if not shutil.which("bluetoothctl"):
+            return {"ok": False, "error": "bluetoothctl tidak tersedia."}
+        if action == "power" or power is not None:
+            state_str = "on" if bool(power) else "off"
+            rc, err = self._runner(["bluetoothctl", "power", state_str])
+            if rc != 0:
+                return {"ok": False, "error": err or "Gagal mengubah daya Bluetooth."}
+            time.sleep(0.25)
+            return {"ok": True, **self.list_bluetooth_devices()}
+
+        clean_mac = str(mac or "").strip().upper()
+        if not re.match(r"^([0-9A-F]{2}:){5}[0-9A-F]{2}$", clean_mac):
+            return {"ok": False, "error": "Alamat MAC Bluetooth tidak valid."}
+        if action not in ("connect", "disconnect"):
+            return {"ok": False, "error": "Aksi Bluetooth tidak dikenal."}
+        try:
+            proc = subprocess.run(
+                ["bluetoothctl", action, clean_mac],
+                capture_output=True,
+                text=True,
+                timeout=8.0,
+                check=False,
+            )
+            if proc.returncode != 0 and "successful" not in (proc.stdout or "").lower():
+                msg = (proc.stderr or proc.stdout or "").strip() or f"Gagal {action} Bluetooth."
+                return {"ok": False, "error": msg[:140]}
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": "Perangkat Bluetooth tidak merespons (pastikan menyala)."}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, **self.list_bluetooth_devices()}
+
+    def is_screen_recorder_available(self) -> bool:
+        return bool(shutil.which("ffmpeg") or shutil.which("gst-launch-1.0"))
+
+    def get_screen_record_status(self) -> dict[str, Any]:
+        with self._lock:
+            recording = self._rec_proc is not None and self._rec_proc.poll() is None
+            if not recording and self._rec_proc is not None:
+                self._rec_proc = None
+            duration = int(max(0, time.time() - self._rec_started_at)) if recording else 0
+            fname = self._rec_path.name if (recording and self._rec_path) else ""
+            return {
+                "available": self.is_screen_recorder_available(),
+                "recording": recording,
+                "duration_sec": duration,
+                "filename": fname,
+            }
+
+    def start_screen_recording(self, output_dir: Path, requested_by: str = "Phone") -> dict[str, Any]:
+        """Start lightweight on-demand laptop screen recording (ffmpeg MP4 or native GStreamer WebM)."""
+        if not self.is_screen_recorder_available():
+            return {"ok": False, "error": "Perekam layar (ffmpeg/gst-launch-1.0) tidak tersedia."}
+        with self._lock:
+            if self._rec_proc is not None and self._rec_proc.poll() is None:
+                return {"ok": True, **self.get_screen_record_status()}
+            output_dir.mkdir(parents=True, exist_ok=True)
+            stamp = time.strftime("%Y%m%d_%H%M%S")
+            display_env = os.environ.get("DISPLAY", ":0")
+            if shutil.which("ffmpeg"):
+                out_path = output_dir / f"VoltDeck_Rec_{stamp}.mp4"
+                cmd = [
+                    "ffmpeg", "-y", "-f", "x11grab", "-framerate", "15",
+                    "-i", display_env, "-c:v", "libx264", "-preset", "ultrafast",
+                    "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out_path),
+                ]
+            else:
+                out_path = output_dir / f"VoltDeck_Rec_{stamp}.webm"
+                cmd = [
+                    "gst-launch-1.0", "-e", "-q",
+                    "ximagesrc", "use-damage=false",
+                    "!", "video/x-raw,framerate=10/1",
+                    "!", "videoconvert",
+                    "!", "vp8enc", "deadline=1", "cpu-used=6", "target-bitrate=1800000",
+                    "!", "webmmux",
+                    "!", "filesink", f"location={out_path}",
+                ]
+            try:
+                self._rec_proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                self._rec_path = out_path
+                self._rec_started_at = time.time()
+            except Exception as exc:
+                self._rec_proc = None
+                self._rec_path = None
+                return {"ok": False, "error": f"Gagal memulai rekaman layar: {exc}"}
+        if self._on_notify:
+            self._on_notify("Rekam Layar Dimulai", f"Perekaman layar dimulai dari {requested_by}.")
+        return {"ok": True, **self.get_screen_record_status()}
+
+    def stop_screen_recording(self) -> dict[str, Any]:
+        """Stop active recording cleanly (SIGINT flushes EOS header) and return saved file info."""
+        with self._lock:
+            proc = self._rec_proc
+            out_path = self._rec_path
+            started = self._rec_started_at
+            self._rec_proc = None
+            self._rec_path = None
+            self._rec_started_at = 0.0
+        if proc is None:
+            return {"ok": False, "error": "Tidak ada rekaman layar yang sedang berjalan."}
+        try:
+            if proc.poll() is None:
+                proc.send_signal(signal.SIGINT)
+                try:
+                    proc.wait(timeout=4.0)
+                except subprocess.TimeoutExpired:
+                    proc.terminate()
+                    proc.wait(timeout=2.0)
+        except Exception:
+            pass
+        duration = int(max(1, time.time() - started)) if started else 0
+        if out_path and out_path.is_file() and out_path.stat().st_size > 0:
+            return {
+                "ok": True,
+                "path": str(out_path),
+                "filename": out_path.name,
+                "size": out_path.stat().st_size,
+                "duration_sec": duration,
+                "recording": self.get_screen_record_status(),
+            }
+        return {"ok": False, "error": "Rekaman dihentikan tetapi file video belum terbentuk."}
 
     # =========================================================================
     # 8. On-Demand Task Monitor (User Processes Only) & 1-Tap Privacy Mode
@@ -1175,6 +1592,19 @@ class RemoteControlManager:
                 self._power_timer.cancel()
                 self._power_timer = None
             self._scheduled_action = None
+            if self._inhibit_proc is not None:
+                try:
+                    self._inhibit_proc.terminate()
+                except Exception:
+                    pass
+                self._inhibit_proc = None
+                self._keep_awake = False
+            if self._rec_proc is not None:
+                try:
+                    self._rec_proc.send_signal(signal.SIGINT)
+                except Exception:
+                    pass
+                self._rec_proc = None
 
     def _emit_state(self) -> None:
         if self._on_state_change:
