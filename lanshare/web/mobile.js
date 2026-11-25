@@ -1488,10 +1488,14 @@
       }
     });
 
-    // Lightbox Close
-    $('m-lightbox-close').addEventListener('click', () => {
+    // Lightbox Close (button OR tap on dark area outside photo)
+    const closeLightbox = () => {
       $('m-lightbox').classList.add('hidden');
       $('m-lightbox-body').innerHTML = '';
+    };
+    $('m-lightbox-close').addEventListener('click', closeLightbox);
+    $('m-lightbox-body').addEventListener('click', (e) => {
+      if (e.target === $('m-lightbox-body')) closeLightbox();
     });
 
     // iOS Safari resume/pause: stop live stream when backgrounded, reconnect SSE on resume
@@ -1512,10 +1516,14 @@
   // --- Bootstrap ---
 
   async function init() {
-    if (window.VDI18n) window.VDI18n.applyDomTranslations();
-    bindEvents();
-    renderPinSlots();
     dismissBootSplash();
+    try {
+      if (window.VDI18n) window.VDI18n.applyDomTranslations();
+      bindEvents();
+      renderPinSlots();
+    } catch (err) {
+      console.error('VoltDeck init UI error:', err);
+    }
     try {
       const res = await fetch('/api/info', {
         credentials: 'same-origin',
@@ -1540,7 +1548,7 @@
         await submitPin(qPin);
       }
     } catch {
-      $('pin-error').textContent = 'Tidak dapat terhubung ke server LANShare.';
+      $('pin-error').textContent = 'Tidak dapat terhubung ke server VoltDeck.';
     }
   }
 

@@ -178,7 +178,7 @@ def list_lan_interfaces() -> list[NetworkInterface]:
 
 def pick_active_interface(preferred: str = "") -> NetworkInterface:
     interfaces = list_lan_interfaces()
-    if preferred:
+    if preferred and not _is_virtual(preferred):
         for iface in interfaces:
             if iface.name == preferred or iface.ip == preferred:
                 return iface
