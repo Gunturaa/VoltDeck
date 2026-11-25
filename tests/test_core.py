@@ -656,6 +656,81 @@ class LANShareEndToEndTests(unittest.TestCase):
         self.assertIn("locked", r_priv.json()["actions"])
         self.assertIn("display_off", r_priv.json()["actions"])
 
+    def test_14_sticky_mpris_player_and_realtime_remote_live_sync(self) -> None:
+        sess = self._auth_mobile_session()
+        remote = self.server.state.remote
+
+        # Simulate Chrome appearing BEFORE Spotify in D-Bus order (the exact real-world bug!)
+        fake_players = {
+            "org.mpris.MediaPlayer2.chromium.instance123": {
+                "available": True,
+                "bus_name": "org.mpris.MediaPlayer2.chromium.instance123",
+                "player": "Chrome",
+                "status": "Paused",
+                "title": "YouTube Tab",
+                "artist": "Channel",
+            },
+            "org.mpris.MediaPlayer2.spotify": {
+                "available": True,
+                "bus_name": "org.mpris.MediaPlayer2.spotify",
+                "player": "Spotify",
+                "status": "Playing",
+                "title": "Favorite Song",
+                "artist": "Artist",
+            },
+        }
+        invoked: list[tuple[str, str]] = []
+
+        remote._read_all_mpris_players = lambda: [dict(v) for v in fake_players.values()]  # type: ignore
+
+        def fake_invoke(target_bus: str, action: str, seek_seconds: int = 0) -> None:
+            invoked.append((target_bus, action))
+            if action == "play_pause":
+                cur = fake_players[target_bus]["status"]
+                fake_players[target_bus]["status"] = "Paused" if cur == "Playing" else "Playing"
+
+        remote._invoke_mpris_command = fake_invoke  # type: ignore
+
+        # 1. Live sync endpoint returns telemetry + media + volume + brightness & detects Spotify playing
+        live = sess.get(f"{self.base_url}/api/remote/telemetry", timeout=5).json()
+        self.assertTrue(live["ok"])
+        self.assertIn("telemetry", live)
+        self.assertIn("volume", live)
+        self.assertIn("brightness", live)
+        self.assertEqual(live["media"]["player"], "Spotify")
+        self.assertEqual(live["media"]["status"], "Playing")
+        self.assertEqual(len(live["media"]["players"]), 2)
+
+        # 2. Pause Spotify -> MUST stay locked on Spotify (NOT jump to Chrome!)
+        r_pause = sess.post(f"{self.base_url}/api/remote/media", json={"action": "play_pause"}, timeout=5).json()
+        self.assertTrue(r_pause["ok"])
+        self.assertEqual(r_pause["media"]["player"], "Spotify")
+        self.assertEqual(r_pause["media"]["status"], "Paused")
+
+        # 3. Subsequent live poll while paused STILL stays on Spotify!
+        live2 = sess.get(f"{self.base_url}/api/remote/telemetry", timeout=5).json()
+        self.assertEqual(live2["media"]["player"], "Spotify")
+        self.assertEqual(live2["media"]["status"], "Paused")
+
+        # 4. Play again -> MUST resume Spotify (NOT Chrome!)
+        r_play = sess.post(f"{self.base_url}/api/remote/media", json={"action": "play_pause"}, timeout=5).json()
+        self.assertTrue(r_play["ok"])
+        self.assertEqual(r_play["media"]["player"], "Spotify")
+        self.assertEqual(r_play["media"]["status"], "Playing")
+        self.assertEqual(invoked, [
+            ("org.mpris.MediaPlayer2.spotify", "play_pause"),
+            ("org.mpris.MediaPlayer2.spotify", "play_pause"),
+        ])
+
+        # 5. User taps Chrome chip -> cleanly switches target player to Chrome
+        r_sel = sess.post(
+            f"{self.base_url}/api/remote/media",
+            json={"action": "select", "bus_name": "org.mpris.MediaPlayer2.chromium.instance123"},
+            timeout=5,
+        ).json()
+        self.assertTrue(r_sel["ok"])
+        self.assertEqual(r_sel["media"]["player"], "Chrome")
+
 
 if __name__ == "__main__":
     unittest.main()

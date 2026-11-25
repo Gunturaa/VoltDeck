@@ -369,6 +369,7 @@
               <span class="m-section-label" data-i18n="media_title">Media Laptop</span>
               <span class="tag" id="r-media-player">STANDBY</span>
             </div>
+            <div class="media-players hidden" id="r-media-players"></div>
             <div class="r-track-title" id="r-media-title" data-i18n="media_none">Tidak ada media aktif</div>
             <div class="r-track-artist" id="r-media-artist" data-i18n="media_hint">YouTube, Spotify, VLC, atau pemutar lain</div>
             <div class="r-media-controls">
@@ -378,11 +379,11 @@
                   <line x1="5" y1="19" x2="5" y2="5"></line>
                 </svg>
               </button>
-              <button class="btn btn-primary r-ctrl-btn r-ctrl-main" data-media="play_pause" type="button" aria-label="Play or Pause">
+              <button class="btn btn-primary r-ctrl-btn r-ctrl-main" id="btn-media-playpause" data-media="play_pause" type="button" aria-label="Play or Pause">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
-                Play / Pause
+                <span>Play / Pause</span>
               </button>
               <button class="btn r-ctrl-btn" data-media="next" type="button" aria-label="Next">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -1028,6 +1028,44 @@ html, body {
   min-width: 0;
 }
 
+.media-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.media-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.media-chip.active {
+  color: #eff6ff;
+  background: rgba(37, 99, 235, 0.25);
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+.media-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.media-chip-dot.playing {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.75);
+}
+
 .exp-path {
   font-size: 11.5px;
   color: var(--text-secondary);

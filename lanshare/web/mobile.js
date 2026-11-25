@@ -22,6 +22,10 @@
     restartArmTimer: null,
     remoteSubTab: 'controls',
     telemetryTimer: null,
+    activeMediaBus: '',
+    draggingVol: false,
+    draggingBright: false,
+    mediaSyncTimer: null,
     screenLive: false,
     screenFps: 5,
     galleryFolder: 'all',
@@ -581,22 +585,27 @@
       $('r-bright-val').textContent = 'N/A';
       return;
     }
+    if (state.draggingBright) return;
     $('r-bright-val').textContent = `${br.percent}%`;
     $('r-bright-slider').value = String(Math.max(10, Math.min(100, br.percent)));
   }
 
+  async function syncRemoteLive() {
+    if (!state.authenticated || state.tab !== 'remote' || document.visibilityState !== 'visible') return;
+    try {
+      const res = await fetch('/api/remote/telemetry', { credentials: 'same-origin', headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.telemetry) renderTelemetry(data.telemetry);
+      if (data.media) renderMedia(data.media);
+      if (data.volume) renderVolume(data.volume);
+      if (data.brightness) renderBrightness(data.brightness);
+    } catch {}
+  }
+
   function startTelemetryPolling() {
     stopTelemetryPolling();
-    state.telemetryTimer = setInterval(async () => {
-      if (!state.authenticated || state.tab !== 'remote' || document.visibilityState !== 'visible') return;
-      try {
-        const res = await fetch('/api/remote/telemetry', { credentials: 'same-origin' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.telemetry) renderTelemetry(data.telemetry);
-        }
-      } catch {}
-    }, 3000);
+    state.telemetryTimer = setInterval(syncRemoteLive, 1500);
   }
 
   function stopTelemetryPolling() {
@@ -632,6 +641,7 @@
   }
 
   function renderVolume(vol) {
+    if (state.draggingVol) return;
     const pct = vol.available ? vol.percent : 0;
     $('r-vol-val').textContent = vol.muted ? 'MUTE' : `${pct}%`;
     $('r-vol-slider').value = String(Math.min(100, pct));
@@ -639,15 +649,50 @@
   }
 
   function renderMedia(media) {
+    const playersWrap = $('r-media-players');
+    const ppBtn = $('btn-media-playpause');
     if (!media || !media.available) {
+      state.activeMediaBus = '';
       $('r-media-player').textContent = 'STANDBY';
-      $('r-media-title').textContent = 'Tidak ada media aktif';
-      $('r-media-artist').textContent = 'Putar YouTube, Spotify, atau VLC di laptop';
+      $('r-media-title').textContent = tr('media_none');
+      $('r-media-artist').textContent = tr('media_hint');
+      if (playersWrap) {
+        playersWrap.classList.add('hidden');
+        playersWrap.innerHTML = '';
+      }
+      if (ppBtn) {
+        ppBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span>Play / Pause</span>`;
+      }
       return;
     }
+    state.activeMediaBus = media.bus_name || '';
+    const isPlaying = String(media.status || '').toLowerCase() === 'playing';
     $('r-media-player').textContent = `${media.player.toUpperCase()} · ${media.status.toUpperCase()}`;
     $('r-media-title').textContent = media.title || media.player;
-    $('r-media-artist').textContent = media.artist || 'Sedang terhubung via MPRIS2';
+    $('r-media-artist').textContent = media.artist || 'MPRIS2';
+
+    if (ppBtn) {
+      ppBtn.innerHTML = isPlaying
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg><span>Pause</span>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span>Play</span>`;
+    }
+
+    if (playersWrap) {
+      const list = Array.isArray(media.players) ? media.players : [];
+      if (list.length > 1) {
+        playersWrap.classList.remove('hidden');
+        playersWrap.innerHTML = list
+          .map((p) => {
+            const dotCls = String(p.status || '').toLowerCase() === 'playing' ? 'playing' : '';
+            const actCls = p.active ? 'active' : '';
+            return `<button class="media-chip ${actCls}" data-media-bus="${escHtml(p.bus_name)}" type="button"><span class="media-chip-dot ${dotCls}"></span>${escHtml(p.player)}</button>`;
+          })
+          .join('');
+      } else {
+        playersWrap.classList.add('hidden');
+        playersWrap.innerHTML = '';
+      }
+    }
   }
 
   function renderPowerState(power) {
@@ -1185,17 +1230,31 @@
 
     document.querySelectorAll('[data-media]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const data = await postRemote('/api/remote/media', { action: btn.dataset.media });
+        const payload = { action: btn.dataset.media };
+        if (state.activeMediaBus) payload.bus_name = state.activeMediaBus;
+        const data = await postRemote('/api/remote/media', payload);
         if (data && data.media) renderMedia(data.media);
+        if (state.mediaSyncTimer) clearTimeout(state.mediaSyncTimer);
+        state.mediaSyncTimer = setTimeout(syncRemoteLive, 350);
       });
     });
 
     document.querySelectorAll('[data-seek]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const sec = Number(btn.dataset.seek);
-        const data = await postRemote('/api/remote/media', { action: 'seek', seek_seconds: sec });
+        const payload = { action: 'seek', seek_seconds: sec };
+        if (state.activeMediaBus) payload.bus_name = state.activeMediaBus;
+        const data = await postRemote('/api/remote/media', payload);
         if (data && data.media) renderMedia(data.media);
       });
+    });
+
+    $('r-media-players').addEventListener('click', async (e) => {
+      const chip = e.target.closest('[data-media-bus]');
+      if (!chip) return;
+      const bus = chip.dataset.mediaBus;
+      const data = await postRemote('/api/remote/media', { action: 'select', bus_name: bus });
+      if (data && data.media) renderMedia(data.media);
     });
 
     $('r-sink-select').addEventListener('change', async (e) => {
@@ -1208,13 +1267,21 @@
     });
 
     let brightDebounce = null;
-    $('r-bright-slider').addEventListener('input', (e) => {
+    const brightEl = $('r-bright-slider');
+    brightEl.addEventListener('pointerdown', () => { state.draggingBright = true; });
+    brightEl.addEventListener('pointerup', () => { state.draggingBright = false; });
+    brightEl.addEventListener('pointercancel', () => { state.draggingBright = false; });
+    brightEl.addEventListener('change', () => { state.draggingBright = false; });
+    brightEl.addEventListener('input', (e) => {
       const val = Number(e.target.value);
       $('r-bright-val').textContent = `${val}%`;
       if (brightDebounce) clearTimeout(brightDebounce);
       brightDebounce = setTimeout(async () => {
         const data = await postRemote('/api/remote/brightness', { percent: val });
-        if (data && data.brightness) renderBrightness(data.brightness);
+        if (data && data.brightness) {
+          state.draggingBright = false;
+          renderBrightness(data.brightness);
+        }
       }, 90);
     });
 
@@ -1224,13 +1291,21 @@
     });
 
     let volDebounce = null;
-    $('r-vol-slider').addEventListener('input', (e) => {
+    const volEl = $('r-vol-slider');
+    volEl.addEventListener('pointerdown', () => { state.draggingVol = true; });
+    volEl.addEventListener('pointerup', () => { state.draggingVol = false; });
+    volEl.addEventListener('pointercancel', () => { state.draggingVol = false; });
+    volEl.addEventListener('change', () => { state.draggingVol = false; });
+    volEl.addEventListener('input', (e) => {
       const val = Number(e.target.value);
       $('r-vol-val').textContent = `${val}%`;
       if (volDebounce) clearTimeout(volDebounce);
       volDebounce = setTimeout(async () => {
         const data = await postRemote('/api/remote/volume', { percent: val });
-        if (data && data.volume) renderVolume(data.volume);
+        if (data && data.volume) {
+          state.draggingVol = false;
+          renderVolume(data.volume);
+        }
       }, 90);
     });
     $('btn-vol-down').addEventListener('click', async () => {
@@ -1696,6 +1771,7 @@
       }
       if (document.visibilityState === 'visible' && state.authenticated) {
         refreshState();
+        if (state.tab === 'remote') refreshRemoteStatus();
         if (!state.sse || state.sse.readyState === EventSource.CLOSED) {
           connectSSE();
         }

@@ -767,7 +767,7 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/remote/telemetry":
-            self._send_json({"ok": True, "telemetry": self.state.remote.get_telemetry()})
+            self._send_json({"ok": True, **self.state.remote.get_live_status()})
             return
 
         if path == "/api/remote/processes":
@@ -1273,7 +1273,8 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/remote/media":
             action = str(body.get("action", ""))
             seek_sec = int(body.get("seek_seconds", 0))
-            res = self.state.remote.media_action(action, seek_seconds=seek_sec)
+            bus_name = str(body.get("bus_name", "")).strip() or None
+            res = self.state.remote.media_action(action, seek_seconds=seek_sec, bus_name=bus_name)
             if not res.get("ok"):
                 self._send_error_json(HTTPStatus.BAD_REQUEST, str(res.get("error", "Media gagal")))
                 return

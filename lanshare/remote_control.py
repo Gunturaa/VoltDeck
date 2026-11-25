@@ -57,6 +57,9 @@ class RemoteControlManager:
 
         # Cached brightness value for xrandr software fallback
         self._xrandr_brightness: Optional[int] = None
+        # Sticky MPRIS2 player tracking (prevents jumping from Spotify -> Chrome on pause)
+        self._last_mpris_bus: Optional[str] = None
+        self._last_playing_buses: set[str] = set()
         # Prime psutil CPU counter
         if psutil is not None:
             try:
@@ -505,72 +508,181 @@ class RemoteControlManager:
         except Exception:
             return []
 
-    def get_media_status(self) -> dict[str, Any]:
+    @staticmethod
+    def _friendly_player_name(bus_name: str, identity: str = "") -> str:
+        ident = (identity or "").strip()
+        if ident:
+            return ident
+        raw = bus_name.replace("org.mpris.MediaPlayer2.", "").split(".")[0].lower()
+        aliases = {
+            "chromium": "Chrome",
+            "chrome": "Chrome",
+            "google-chrome": "Chrome",
+            "firefox": "Firefox",
+            "spotify": "Spotify",
+            "vlc": "VLC",
+            "celluloid": "Celluloid",
+            "rhythmbox": "Rhythmbox",
+            "brave": "Brave",
+            "edge": "Edge",
+        }
+        return aliases.get(raw, raw.capitalize() or "Media")
+
+    def _read_all_mpris_players(self) -> list[dict[str, Any]]:
         players = self._list_mpris_bus_names()
         if not players or dbus is None:
-            return {"available": False, "player": "", "status": "Stopped", "title": "", "artist": ""}
-
+            return []
         bus = dbus.SessionBus()
-        chosen: Optional[dict[str, Any]] = None
+        items: list[dict[str, Any]] = []
         for name in players:
             try:
                 obj = bus.get_object(name, "/org/mpris/MediaPlayer2")
                 props = dbus.Interface(obj, "org.freedesktop.DBus.Properties")
                 status = str(props.Get("org.mpris.MediaPlayer2.Player", "PlaybackStatus"))
                 meta = props.Get("org.mpris.MediaPlayer2.Player", "Metadata")
+                identity = ""
+                try:
+                    identity = str(props.Get("org.mpris.MediaPlayer2", "Identity"))
+                except Exception:
+                    identity = ""
                 title = str(meta.get("xesam:title", "")) if meta else ""
                 artists = meta.get("xesam:artist", []) if meta else []
                 artist = ", ".join(str(a) for a in artists) if artists else ""
-                short_name = name.replace("org.mpris.MediaPlayer2.", "").split(".")[0].capitalize()
-                info = {
-                    "available": True,
-                    "bus_name": name,
-                    "player": short_name,
-                    "status": status,
-                    "title": title,
-                    "artist": artist,
-                }
-                if status == "Playing":
-                    return info
-                if chosen is None:
-                    chosen = info
+                items.append(
+                    {
+                        "available": True,
+                        "bus_name": name,
+                        "player": self._friendly_player_name(name, identity),
+                        "status": status,
+                        "title": title,
+                        "artist": artist,
+                    }
+                )
             except Exception:
                 continue
-        return chosen or {"available": False, "player": "", "status": "Stopped", "title": "", "artist": ""}
+        return items
 
-    def media_action(self, action: str, seek_seconds: int = 0) -> dict[str, Any]:
-        if dbus is None:
-            return {"ok": False, "error": "D-Bus tidak tersedia."}
+    def _invoke_mpris_command(self, target_bus: str, action: str, seek_seconds: int = 0) -> None:
+        bus = dbus.SessionBus()
+        obj = bus.get_object(target_bus, "/org/mpris/MediaPlayer2")
+        player_iface = dbus.Interface(obj, "org.mpris.MediaPlayer2.Player")
+        if action == "seek":
+            offset_us = dbus.Int64(int(seek_seconds) * 1_000_000)
+            player_iface.Seek(offset_us)
+            return
+        method_map = {
+            "play_pause": "PlayPause",
+            "play": "Play",
+            "pause": "Pause",
+            "next": "Next",
+            "previous": "Previous",
+            "stop": "Stop",
+        }
+        method = method_map.get(action)
+        if not method:
+            raise ValueError("Aksi media tidak dikenal.")
+        getattr(player_iface, method)()
 
-        status = self.get_media_status()
+    def get_media_status(self, preferred_bus: Optional[str] = None) -> dict[str, Any]:
+        all_players = self._read_all_mpris_players()
+        if not all_players:
+            with self._lock:
+                self._last_playing_buses.clear()
+                self._last_mpris_bus = None
+            return {
+                "available": False,
+                "bus_name": "",
+                "player": "",
+                "status": "Stopped",
+                "title": "",
+                "artist": "",
+                "players": [],
+            }
+
+        by_bus = {p["bus_name"]: p for p in all_players}
+        playing_now = {p["bus_name"] for p in all_players if p["status"] == "Playing"}
+
+        with self._lock:
+            newly_playing = [
+                p for p in all_players
+                if p["status"] == "Playing" and p["bus_name"] not in self._last_playing_buses
+            ]
+            self._last_playing_buses = playing_now
+
+            chosen: Optional[dict[str, Any]] = None
+            # 1. Explicit target player requested (chip click or targeted control)
+            if preferred_bus and preferred_bus in by_bus:
+                chosen = by_bus[preferred_bus]
+            # 2. A player just transitioned into Playing on the laptop -> auto-follow it!
+            elif newly_playing:
+                chosen = newly_playing[0]
+            # 3. Stay sticky on the last active/controlled player (e.g. Spotify right after Pause!)
+            elif self._last_mpris_bus and self._last_mpris_bus in by_bus:
+                chosen = by_bus[self._last_mpris_bus]
+            # 4. Initial selection fallback: Playing -> Paused with metadata -> first available
+            else:
+                for p in all_players:
+                    if p["status"] == "Playing":
+                        chosen = p
+                        break
+                if chosen is None:
+                    for p in all_players:
+                        if p.get("title"):
+                            chosen = p
+                            break
+                if chosen is None:
+                    chosen = all_players[0]
+
+            self._last_mpris_bus = chosen["bus_name"]
+
+        result = dict(chosen)
+        result["players"] = [
+            {
+                "bus_name": p["bus_name"],
+                "player": p["player"],
+                "status": p["status"],
+                "title": p["title"],
+                "active": p["bus_name"] == chosen["bus_name"],
+            }
+            for p in all_players
+        ]
+        return result
+
+    def media_action(
+        self,
+        action: str,
+        seek_seconds: int = 0,
+        bus_name: Optional[str] = None,
+    ) -> dict[str, Any]:
+        if action == "select":
+            status = self.get_media_status(preferred_bus=bus_name)
+            if not status.get("available"):
+                return {"ok": False, "error": "Tidak ada pemutar media aktif (YouTube/Spotify/VLC)."}
+            return {"ok": True, "media": status}
+
+        if action not in ("play_pause", "play", "pause", "next", "previous", "stop", "seek"):
+            return {"ok": False, "error": "Aksi media tidak dikenal."}
+
+        status = self.get_media_status(preferred_bus=bus_name)
         target_bus = status.get("bus_name")
         if not target_bus:
             return {"ok": False, "error": "Tidak ada pemutar media aktif (YouTube/Spotify/VLC)."}
 
+        with self._lock:
+            self._last_mpris_bus = target_bus
+        prev_sig = (status.get("status"), status.get("title"))
+
         try:
-            bus = dbus.SessionBus()
-            obj = bus.get_object(target_bus, "/org/mpris/MediaPlayer2")
-            player_iface = dbus.Interface(obj, "org.mpris.MediaPlayer2.Player")
-
-            if action == "seek":
-                offset_us = dbus.Int64(int(seek_seconds) * 1_000_000)
-                player_iface.Seek(offset_us)
-            else:
-                method_map = {
-                    "play_pause": "PlayPause",
-                    "play": "Play",
-                    "pause": "Pause",
-                    "next": "Next",
-                    "previous": "Previous",
-                    "stop": "Stop",
-                }
-                method = method_map.get(action)
-                if not method:
-                    return {"ok": False, "error": "Aksi media tidak dikenal."}
-                getattr(player_iface, method)()
-
-            time.sleep(0.06)
-            return {"ok": True, "media": self.get_media_status()}
+            self._invoke_mpris_command(target_bus, action, seek_seconds=seek_seconds)
+            # Briefly wait for Spotify/Chrome MPRIS D-Bus to reflect the updated status/title
+            updated = status
+            checks = 1 if action == "seek" else 7
+            for _ in range(checks):
+                time.sleep(0.045)
+                updated = self.get_media_status(preferred_bus=target_bus)
+                if (updated.get("status"), updated.get("title")) != prev_sig:
+                    break
+            return {"ok": True, "media": updated}
         except Exception as exc:
             return {"ok": False, "error": f"Gagal mengontrol media: {exc}"}
 
@@ -919,6 +1031,15 @@ class RemoteControlManager:
                         "org.freedesktop.login1.Manager.Suspend", "boolean:true",
                     ]
                 )
+
+    def get_live_status(self) -> dict[str, Any]:
+        """Lightweight live sync payload for active Remote tab (telemetry + media + volume + brightness)."""
+        return {
+            "telemetry": self.get_telemetry(),
+            "media": self.get_media_status(),
+            "volume": self.get_volume(),
+            "brightness": self.get_brightness(),
+        }
 
     def get_full_status(self, enabled: bool = True) -> dict[str, Any]:
         return {
