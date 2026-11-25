@@ -1,17 +1,19 @@
 <div align="center">
 
-<img src="assets/voltdeck-banner.png" alt="Banner VoltDeck" width="100%" />
+<img src="assets/voltdeck-banner.png" alt="VoltDeck — Alternatif AirDrop, Transfer File, dan Remote Control Linux dari iPhone, Android, dan Browser" width="100%" />
 
-<br />
+# VoltDeck — Transfer File & Remote Control Linux dari HP/Browser
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3B82F6?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![GTK3 + WebKit2](https://img.shields.io/badge/Desktop-GTK3%20%2B%20WebKit2-22C55E?style=flat-square)](https://webkitgtk.org/)
-[![Platform](https://img.shields.io/badge/OS-Linux%20Mint%20%2F%20Ubuntu-60A5FA?style=flat-square&logo=linuxmint&logoColor=white)](https://linuxmint.com/)
+[![Platform](https://img.shields.io/badge/OS-Linux%20Mint%20%2F%20Ubuntu%20%2F%20Debian-60A5FA?style=flat-square&logo=linuxmint&logoColor=white)](https://linuxmint.com/)
 [![Zero Mobile App](https://img.shields.io/badge/Klien-iOS%20%7C%20Android%20%7C%20Web-0EA5E9?style=flat-square)](#)
+[![Bilingual](https://img.shields.io/badge/Bahasa-ID%20%7C%20EN-8B5CF6?style=flat-square)](#)
+[![Lisensi: MIT](https://img.shields.io/badge/Lisensi-MIT-F59E0B?style=flat-square)](LICENSE)
 
 [English](README.md) · **Bahasa Indonesia**
 
-*Transfer file 2 arah streaming, shared clipboard, galeri & webcam laptop, live screen view MJPEG, dan remote control penuh langsung dari **iOS, Android, iPad, atau browser perangkat mana saja** (Safari, Chrome, Firefox, Edge — tanpa install aplikasi di HP) — dilengkapi **Mode Offline (LAN Only)** dan **Mode Anywhere (Tailscale Private VPN)**.*
+**Alternatif AirDrop & KDE Connect ringan untuk Linux Mint, Ubuntu, dan Debian tanpa perlu install aplikasi di HP.** Transfer file 2 arah streaming, jelajah file laptop, shared clipboard, galeri & webcam laptop, live screen view MJPEG, monitor RAM, dan remote control penuh langsung dari **Safari, Chrome, Firefox, atau Edge** — mendukung **Mode Offline (Wi-Fi LAN)** dan **Mode Anywhere (Tailscale Private VPN)**.
 
 </div>
 
@@ -40,15 +42,17 @@
 - Sinkronisasi otomatis clipboard Linux Mint (`Gtk.Clipboard`) ke iOS, Android, dan browser desktop (termasuk tombol *Salin* yang kompatibel dengan HTTP lokal).
 - Tempel pesan berisi tautan dari WhatsApp di HP → ketuk **`Buka di Laptop`** untuk langsung membuka tautan tersebut di browser default Linux Mint.
 
-### 🖼️ Galeri & Ambil Gambar dari Laptop
-- Jelajah foto dari folder laptop (`Pictures`, `Downloads`, `Desktop`, `Documents`, `LANShare`) langsung dari HP/Web.
-- **Foto Webcam Laptop** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) & **Screenshot Layar** 1 ketuk langsung unduh ke HP.
+### 🖼️ Galeri, File Explorer & Ambil Gambar dari Laptop
+- **File Explorer Aman (Sandboxed):** Jelajahi folder aman laptop (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Videos`, `LANShare`), cari file, dan unduh langsung PDF, DOCX, ZIP, dll. ke HP (file tersembunyi/dotfile & path traversal diblokir ketat).
+- **Galeri Foto:** Jelajah foto dari folder laptop dalam grid thumbnail responsif dengan lightbox ramah notch iPhone.
+- **Ambil Gambar Instan:** **Foto Webcam Laptop** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) & **Screenshot Layar** 1 ketuk langsung unduh ke HP.
 
 ### 🎛️ Remote Control Lengkap
 - **Telemetry Real-Time:** Pantau **Baterai (+ status charger)**, **CPU %**, **RAM %**, dan **Suhu (°C)** laptop secara langsung.
 - **Media & Audio:** Play/Pause, Next/Prev, Seek `±10 dtk` via D-Bus **MPRIS2** (YouTube, Spotify, VLC, Celluloid), slider volume + **Ganti Output Audio** (Speaker ↔ Headset/Bluetooth via `pactl`).
-- **Layar & Daya Aman:** Slider kecerahan layar, **Matikan Layar Saja** (`DPMS`), **Kunci Layar**, **Sleep**, **Restart**, dan **Matikan Laptop** dengan konfirmasi 2× ketuk + timer (`15 dtk / 15 mnt / 30 mnt / 60 mnt`) + tombol **Batalkan** di HP maupun Desktop.
-- **App Launcher:** Buka aplikasi terpasang di Linux Mint (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, dll.) dari HP/Web melalui *allowlist* aman.
+- **Layar, Privacy Mode 1-Ketuk & Daya Aman:** Slider kecerahan layar, **Matikan Layar Saja** (`DPMS`), **Mode Privasi 1-Ketuk** (*Pause media + Mute audio + Kunci layar + Matikan layar*), **Kunci Layar**, **Sleep**, **Restart**, dan **Matikan Laptop** dengan konfirmasi 2× ketuk + timer (`15 dtk / 15 mnt / 30 mnt / 60 mnt`) + tombol **Batalkan** di HP maupun Desktop.
+- **App Launcher & Pintasan Web Cepat:** Buka aplikasi terpasang di Linux (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, dll.) melalui *allowlist* aman, atau buka **YouTube, GitHub, WhatsApp Web, ChatGPT, dan Gmail** di browser laptop dalam 1 ketuk.
+- **Monitor Tugas RAM On-Demand:** Lihat proses dengan pemakaian RAM tertinggi secara *on-demand* (0% beban saat idle) dan tutup aplikasi yang hang dengan konfirmasi 2× ketuk (proses inti sistem dilindungi).
 - **Layar Live (MJPEG):** Pantau layar laptop secara langsung di Safari, Chrome, atau Firefox (`2 / 5 / 8 FPS`) + opsi **Tap-untuk-Klik**.
 - **Touchpad & Clicker Presentasi:** Trackpad sentuh/mouse via X11 `XTest`, tombol slide (`Prev / Next / F5 / Esc`), dan keyboard jarak jauh.
 
@@ -81,7 +85,7 @@ sudo apt install -y \
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/<username>/VoltDeck.git
+git clone https://github.com/Gunturaa/VoltDeck.git
 cd VoltDeck
 
 # 2. Pasang ikon PETIR, shortcut Menu & Desktop, Klik Kanan Nemo, & Autostart Standby

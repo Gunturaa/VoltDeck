@@ -1,17 +1,19 @@
 <div align="center">
 
-<img src="assets/voltdeck-banner.png" alt="VoltDeck Banner" width="100%" />
+<img src="assets/voltdeck-banner.png" alt="VoltDeck — AirDrop Alternative, File Transfer, and Remote Control for Linux from iPhone, Android, and Web Browser" width="100%" />
 
-<br />
+# VoltDeck — AirDrop, File Transfer & Remote Control for Linux
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3B82F6?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![GTK3 + WebKit2](https://img.shields.io/badge/Desktop-GTK3%20%2B%20WebKit2-22C55E?style=flat-square)](https://webkitgtk.org/)
-[![Platform](https://img.shields.io/badge/OS-Linux%20Mint%20%2F%20Ubuntu-60A5FA?style=flat-square&logo=linuxmint&logoColor=white)](https://linuxmint.com/)
+[![Platform](https://img.shields.io/badge/OS-Linux%20Mint%20%2F%20Ubuntu%20%2F%20Debian-60A5FA?style=flat-square&logo=linuxmint&logoColor=white)](https://linuxmint.com/)
 [![Zero Mobile App](https://img.shields.io/badge/Clients-iOS%20%7C%20Android%20%7C%20Web-0EA5E9?style=flat-square)](#)
+[![Bilingual](https://img.shields.io/badge/Language-EN%20%7C%20ID-8B5CF6?style=flat-square)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B?style=flat-square)](LICENSE)
 
 **English** · [Bahasa Indonesia](README.id.md)
 
-*Two-way streaming file transfer, real-time shared clipboard, laptop photo gallery & webcam capture, live MJPEG screen view, and full remote desktop control right from **iOS, Android, iPad, or any desktop browser** (Safari, Chrome, Firefox, Edge — zero mobile app install) — with **Offline Mode (LAN Only)** and **Anywhere Mode (Tailscale Private VPN)**.*
+**A lightweight, zero-mobile-app companion for Linux Mint, Ubuntu, and Debian.** Transfer files two-way between iPhone/Android and Linux, browse laptop files, sync clipboard, view live screen (MJPEG), and control volume, media, brightness, apps, RAM tasks, and power straight from **Safari, Chrome, Firefox, or Edge** — over **Local Wi-Fi (Offline LAN)** or **Tailscale Private VPN (Anywhere Mode)**.
 
 </div>
 
@@ -20,8 +22,23 @@
 ## 🖥️ Interface Preview
 
 <div align="center">
-  <img src="assets/voltdeck-preview.jpg" alt="VoltDeck Desktop UI Preview" width="92%" />
+  <img src="assets/voltdeck-preview.jpg" alt="VoltDeck Linux Mint Desktop App and iPhone/Android Responsive Web UI Preview" width="92%" />
 </div>
+
+---
+
+## 💡 Why VoltDeck? (Alternative to AirDrop, KDE Connect & LocalSend for Linux)
+
+| Feature | **VoltDeck** | KDE Connect | LocalSend |
+| --- | :---: | :---: | :---: |
+| **Zero Mobile App Required (Safari / Chrome)** | ✅ | ❌ | ❌ |
+| **Two-Way Streaming File Transfer (iPhone/Android ↔ Linux)** | ✅ | ✅ | ✅ |
+| **Sandboxed Laptop File Explorer & Photo Gallery** | ✅ | Partial | ❌ |
+| **Live Screen View (MJPEG) + Tap-to-Click** | ✅ | ❌ | ❌ |
+| **Media, Volume, Audio Output Switcher & Brightness** | ✅ | ✅ | ❌ |
+| **On-Demand RAM Task Monitor & 1-Tap Privacy Mode** | ✅ | ❌ | ❌ |
+| **Remote Access Over 4G/5G via Tailscale VPN** | ✅ | Manual | ❌ |
+| **Low-RAM System Tray Standby (~25–35 MB)** | ✅ | ✅ | ✅ |
 
 ---
 
@@ -40,15 +57,17 @@
 - Automatic Linux Mint `Gtk.Clipboard` sync to iOS, Android, and desktop browsers (with HTTP-compatible one-tap copy fallback).
 - Paste any WhatsApp message or link on your phone → tap **`Buka di Laptop`** to open safe `http(s)://` URLs directly in your default Linux Mint browser.
 
-### 🖼️ Laptop Gallery & Instant Capture
-- Browse and pull images directly from laptop folders (`Pictures`, `Downloads`, `Desktop`, `Documents`, `LANShare`) in a responsive thumbnail grid.
-- One-tap **Laptop Webcam Capture** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) and **Desktop Screenshot** straight to your phone.
+### 🖼️ Laptop Gallery, File Explorer & Instant Capture
+- **Sandboxed File Explorer:** Browse safe laptop directories (`Documents`, `Downloads`, `Desktop`, `Pictures`, `Music`, `Videos`, `LANShare`), search within folders, and stream-download PDFs, DOCX, ZIPs, and more straight to your phone (hidden dotfiles and path traversal are strictly blocked).
+- **Photo Gallery:** Browse and pull images directly from laptop folders in a responsive thumbnail grid with safe-area lightbox preview.
+- **Instant Capture:** One-tap **Laptop Webcam Capture** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) and **Desktop Screenshot** straight to your phone.
 
 ### 🎛️ Complete Remote Control Deck
 - **Real-Time Telemetry:** Monitor laptop **Battery (+ charging status)**, **CPU %**, **RAM %**, and **Temperature (°C)**.
 - **Media & Audio:** Play/Pause, Next/Previous, and `±10s` Seek via Session D-Bus **MPRIS2** (YouTube, Spotify, VLC, Celluloid), plus volume slider and **Audio Output Sink Switcher** (Speakers ↔ Headset/Bluetooth via `pactl`).
-- **Display & Safe Power Controls:** Brightness slider, **Display Off** (`DPMS`), **Lock Screen**, **Sleep**, **Restart**, and **Shutdown** protected by 2-step confirmation, selectable timer (`15s / 15m / 30m / 60m`), and a live cancel button on both phone and desktop.
-- **App Launcher:** Launch installed Linux Mint desktop apps (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, etc.) via a strict binary allowlist.
+- **Display, 1-Tap Privacy Mode & Safe Power Controls:** Brightness slider, **Display Off** (`DPMS`), **1-Tap Privacy Mode** (*Pause media + Mute audio + Lock screen + Display Off*), **Lock Screen**, **Sleep**, **Restart**, and **Shutdown** protected by 2-step confirmation, selectable timer (`15s / 15m / 30m / 60m`), and a live cancel button on both phone and desktop.
+- **App Launcher & Quick Web Shortcuts:** Launch installed Linux desktop apps (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, etc.) via a strict binary allowlist, or open **YouTube, GitHub, WhatsApp Web, ChatGPT, and Gmail** on your laptop in one tap.
+- **On-Demand RAM Task Monitor:** Inspect top memory-consuming user processes on demand and safely terminate frozen apps with 2-tap confirmation (core system/desktop daemons are strictly protected).
 - **Live Screen View (MJPEG):** Stream your Linux Mint screen live in Safari, Chrome, or Firefox (`2 / 5 / 8 FPS`) with optional **Tap-to-Click** cursor interaction.
 - **Touchpad & Presentation Clicker:** Touch/mouse trackpad via X11 `XTest`, presentation keys (`Prev / Next / F5 / Esc`), and remote keyboard typing.
 
@@ -83,7 +102,7 @@ sudo apt install -y \
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<username>/VoltDeck.git
+git clone https://github.com/Gunturaa/VoltDeck.git
 cd VoltDeck
 
 # 2. Install icons, App Menu & Desktop shortcuts, Nemo right-click action, & Tray Autostart
@@ -150,7 +169,7 @@ sudo ufw allow in on tailscale0 to any port 8765 proto tcp comment 'VoltDeck Tai
 │   ├── desktop_app.py            # GTK3 + WebKit2 Single-Instance app & Ayatana System Tray
 │   └── web/                      # Desktop & All-Device Responsive Web UI (HTML/CSS/JS)
 └── tests/
-    └── test_core.py              # End-to-end automated test suite (11 test cases)
+    └── test_core.py              # End-to-end automated test suite (13 test cases)
 ```
 
 ---
@@ -161,7 +180,7 @@ sudo ufw allow in on tailscale0 to any port 8765 proto tcp comment 'VoltDeck Tai
 python3 -m unittest discover -s tests -v
 ```
 
-Covers 6-digit PIN security & brute-force lockout, streaming upload & filename sanitization, streaming download (`Range 206`, thumbnails, streaming ZIP), two-way shared clipboard & SSE events, safe URL opening, remote controls & MJPEG streaming, Dual-Mode *Offline vs Anywhere* enforcement, Trusted Device persistence across restarts, App Launcher allowlist, Webcam snapshot, and Laptop Gallery browser.
+Covers 6-digit PIN security & brute-force lockout, streaming upload & filename sanitization, streaming download (`Range 206`, thumbnails, streaming ZIP), two-way shared clipboard & SSE events, safe URL opening, remote controls & MJPEG streaming, Dual-Mode *Offline vs Anywhere* enforcement, Trusted Device persistence across restarts, App Launcher allowlist, Webcam snapshot, Laptop Gallery, Bilingual ID/EN i18n, Sandboxed File Explorer, On-Demand RAM Task Monitor, and 1-Tap Privacy Mode.
 
 ---
 
