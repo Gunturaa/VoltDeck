@@ -57,7 +57,8 @@ from .server import LANShareServer  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ICON_PNG_PATH = PROJECT_ROOT / "assets" / "icons" / "lanshare-256.png"
-ICON_TRAY_PATH = PROJECT_ROOT / "assets" / "icons" / "lanshare-64.png"
+ICON_TRAY_PATH = PROJECT_ROOT / "assets" / "voltdeck-tray-white.svg"
+ICON_NOTIF_PATH = PROJECT_ROOT / "assets" / "icons" / "lanshare-64.png"
 ICON_SVG_PATH = PROJECT_ROOT / "assets" / "lanshare.svg"
 
 
@@ -572,7 +573,7 @@ class LANShareApplication(Gtk.Application):
         GLib.idle_add(self._show_notification_idle, title, body)
 
     def _show_notification_idle(self, title: str, body: str) -> bool:
-        icon = str(ICON_TRAY_PATH) if ICON_TRAY_PATH.is_file() else "network-transmit-receive"
+        icon = str(ICON_NOTIF_PATH) if ICON_NOTIF_PATH.is_file() else "network-transmit-receive"
         if Notify is not None:
             try:
                 notif = Notify.Notification.new(title, body, icon)
@@ -592,12 +593,19 @@ class LANShareApplication(Gtk.Application):
         if AppIndicator3 is None or self.server is None:
             return
         try:
-            icon_name = str(ICON_TRAY_PATH) if ICON_TRAY_PATH.is_file() else "network-transmit-receive"
-            ind = AppIndicator3.Indicator.new(
-                "voltdeck-tray",
-                icon_name,
-                AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
-            )
+            if ICON_TRAY_PATH.is_file():
+                ind = AppIndicator3.Indicator.new_with_path(
+                    "voltdeck-tray",
+                    "voltdeck-tray-white",
+                    AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
+                    str(ICON_TRAY_PATH.parent),
+                )
+            else:
+                ind = AppIndicator3.Indicator.new(
+                    "voltdeck-tray",
+                    "network-transmit-receive",
+                    AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
+                )
             ind.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
             menu = Gtk.Menu()
