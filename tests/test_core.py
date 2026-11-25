@@ -731,6 +731,68 @@ class LANShareEndToEndTests(unittest.TestCase):
         self.assertTrue(r_sel["ok"])
         self.assertEqual(r_sel["media"]["player"], "Chrome")
 
+    def test_15_custom_persistent_pin_and_light_dark_theme(self) -> None:
+        # 1. Fresh instance without custom_pin reports pin_configured = False
+        st0 = requests.get(f"{self.base_url}/api/desktop/state", headers=self.desktop_headers, timeout=5).json()
+        self.assertFalse(st0["pin_configured"])
+
+        # 2. Invalid PIN (non-6-digit) is rejected (400)
+        r_bad = requests.post(
+            f"{self.base_url}/api/desktop/pin/set",
+            headers=self.desktop_headers,
+            json={"pin": "123"},
+            timeout=5,
+        )
+        self.assertEqual(r_bad.status_code, 400)
+
+        # 3. Weak PIN (123456) is allowed per user choice, with weak_warning=True
+        r_weak = requests.post(
+            f"{self.base_url}/api/desktop/pin/set",
+            headers=self.desktop_headers,
+            json={"pin": "123456"},
+            timeout=5,
+        )
+        self.assertEqual(r_weak.status_code, 200)
+        self.assertTrue(r_weak.json()["weak_warning"])
+        self.assertTrue(r_weak.json()["pin_configured"])
+
+        # 4. Strong custom PIN (482915) sets weak_warning=False & persists across server restart!
+        r_set = requests.post(
+            f"{self.base_url}/api/desktop/pin/set",
+            headers=self.desktop_headers,
+            json={"pin": "482915"},
+            timeout=5,
+        )
+        self.assertEqual(r_set.status_code, 200)
+        self.assertFalse(r_set.json()["weak_warning"])
+        self.assertEqual(self.cfg.custom_pin, "482915")
+
+        # 5. Light/Dark Theme persists in config & exposes on /api/info
+        r_theme = requests.post(
+            f"{self.base_url}/api/desktop/settings",
+            headers=self.desktop_headers,
+            json={"theme": "light"},
+            timeout=5,
+        )
+        self.assertEqual(r_theme.status_code, 200)
+        info = requests.get(f"{self.base_url}/api/info", timeout=5).json()
+        self.assertEqual(info["theme"], "light")
+
+        # 6. Simulate server restart using same AppConfig -> custom PIN 482915 still works!
+        self.server.stop()
+        server2 = LANShareServer(config=self.cfg, trusted_file=self.trusted_file)
+        server2.start()
+        try:
+            url2 = f"http://127.0.0.1:{server2.port}"
+            h2 = {"X-Desktop-Token": server2.state.security.desktop_token}
+            st2 = requests.get(f"{url2}/api/desktop/state", headers=h2, timeout=5).json()
+            self.assertTrue(st2["pin_configured"])
+            self.assertEqual(st2["pin"], "482915")
+            r_login = requests.post(f"{url2}/api/auth/verify", json={"pin": "482915"}, timeout=5)
+            self.assertEqual(r_login.status_code, 200)
+        finally:
+            server2.stop()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -57,7 +57,13 @@
   <!-- 6-Digit Security PIN Gate -->
   <main class="pin-screen" id="pin-screen">
     <div class="pin-card">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-bottom:4px">
+        <button class="theme-toggle-btn" id="btn-pin-theme-toggle" type="button" aria-label="Toggle theme" title="Mode Terang / Gelap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+        </button>
         <div class="lang-switch">
           <button class="lang-btn active" data-lang-btn="id" type="button">ID</button>
           <button class="lang-btn" data-lang-btn="en" type="button">EN</button>
@@ -132,6 +138,12 @@
       </div>
 
       <div style="display:flex;align-items:center;gap:6px">
+        <button class="theme-toggle-btn" id="btn-m-theme-toggle" type="button" aria-label="Toggle theme" title="Mode Terang / Gelap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+        </button>
         <button class="btn btn-sm" id="btn-lang-cycle" type="button" style="min-width:36px;font-family:var(--font-mono);font-weight:700" title="Switch ID / EN">ID</button>
         <button class="btn btn-sm btn-ghost" id="btn-logout" title="Putuskan sesi">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -437,7 +449,7 @@
               <span class="m-section-label" data-i18n="power_title">Kontrol Daya Laptop</span>
               <span class="tag">2-STEP</span>
             </div>
-            <button class="btn r-ctrl-btn" id="btn-privacy-mode" type="button" style="border-color:rgba(96,165,250,0.42);background:rgba(59,130,246,0.14);color:#dbeafe">
+            <button class="btn r-ctrl-btn btn-privacy-ios" id="btn-privacy-mode" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>

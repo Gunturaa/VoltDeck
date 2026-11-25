@@ -61,6 +61,12 @@
       </div>
 
       <div class="vd-topbar-actions">
+        <button class="theme-toggle-btn" id="btn-theme-toggle" type="button" title="Mode Terang / Gelap" aria-label="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+        </button>
         <div class="lang-switch" title="Ganti Bahasa / Switch Language">
           <button class="lang-btn active" data-lang-btn="id" type="button">ID</button>
           <button class="lang-btn" data-lang-btn="en" type="button">EN</button>
@@ -119,7 +125,11 @@
         </nav>
 
         <div class="vd-sidebar-foot">
-          <div class="vd-star" aria-hidden="true">✦</div>
+          <div class="vd-star" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </div>
           <div class="vd-tagline mono">
             <strong>VOLTDECK</strong><br />
             STAY CONNECTED<br />
@@ -273,19 +283,27 @@
             <div class="vd-card">
               <div class="vd-card-head">
                 <div class="vd-card-title-row">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
                   <span data-i18n="pin_title">PIN Keamanan 6 Digit</span>
                 </div>
-                <button class="btn btn-sm btn-ghost" id="btn-copy-pin" title="Salin PIN">
-                  <span data-i18n="copy">Salin</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                </button>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <button class="btn btn-sm btn-ghost btn-icon" id="btn-toggle-pin-vis" type="button" title="Tampilkan / Sembunyikan PIN" aria-label="Show or hide PIN">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </button>
+                  <button class="btn btn-sm btn-ghost" id="btn-copy-pin" type="button" title="Salin PIN">
+                    <span data-i18n="copy">Salin</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div class="pin-grid" id="pin-grid" aria-label="PIN 6 Digit">
                 <div class="pin-digit">-</div>
@@ -297,19 +315,27 @@
                 <div class="pin-digit">-</div>
               </div>
               <div class="pin-controls">
-                <button class="btn vd-btn-glass" id="btn-rotate-pin" style="flex:1">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                <button class="btn btn-primary" id="btn-edit-pin" type="button" style="flex:1.15">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                   </svg>
-                  <span data-i18n="rotate_pin">Acak PIN</span>
+                  <span data-i18n="edit_pin">Ubah PIN</span>
                 </button>
-                <button class="btn btn-danger" id="btn-rotate-revoke" style="flex:1" title="Acak PIN & putuskan semua sesi">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button class="btn vd-btn-glass" id="btn-rotate-pin" type="button" style="flex:1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                   </svg>
-                  <span data-i18n="reset_sessions">Reset Sesi</span>
+                  <span data-i18n="rotate_pin">Acak</span>
+                </button>
+                <button class="btn btn-danger" id="btn-rotate-revoke" type="button" style="flex:1" title="Acak PIN & putuskan semua sesi">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                  <span data-i18n="reset_sessions">Reset</span>
                 </button>
               </div>
             </div>
@@ -422,6 +448,27 @@
               </div>
               <div class="vd-setting-row">
                 <div>
+                  <div class="vd-setting-title" data-i18n="set_appearance">Tampilan (Mode Terang / Gelap)</div>
+                  <div class="vd-setting-sub" data-i18n="set_appearance_sub">Gaya iOS / macOS yang otomatis tersinkron ke Desktop & Web</div>
+                </div>
+                <div class="lang-switch">
+                  <button class="lang-btn active" data-theme-btn="dark" type="button" style="display:inline-flex;align-items:center;gap:4px;padding:0 9px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <span data-i18n="theme_dark">Gelap</span>
+                  </button>
+                  <button class="lang-btn" data-theme-btn="light" type="button" style="display:inline-flex;align-items:center;gap:4px;padding:0 9px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="4"></circle>
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                    </svg>
+                    <span data-i18n="theme_light">Terang</span>
+                  </button>
+                </div>
+              </div>
+              <div class="vd-setting-row">
+                <div>
                   <div class="vd-setting-title" data-i18n="set_language">Bahasa Aplikasi</div>
                   <div class="vd-setting-sub" data-i18n="set_language_sub">Pilih bahasa antarmuka Desktop & Web (Indonesia / English)</div>
                 </div>
@@ -495,6 +542,59 @@
 
   <!-- Hidden file input fallback -->
   <input type="file" id="fallback-file-input" class="hidden" multiple />
+
+  <!-- First-Time Setup & Change Custom PIN Sheet (macOS Style) -->
+  <div class="vd-modal-backdrop hidden" id="pin-setup-modal" role="dialog" aria-modal="true" aria-labelledby="pin-modal-title">
+    <div class="vd-modal">
+      <div class="vd-modal-head">
+        <div class="vd-modal-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <div class="vd-modal-title" id="pin-modal-title" data-i18n="pin_setup_title">Buat PIN Keamanan VoltDeck</div>
+        <div class="vd-modal-sub" id="pin-modal-sub" data-i18n="pin_setup_sub">Buat PIN 6 digit pilihan Anda untuk menghubungkan HP ke laptop. PIN akan tersimpan permanen.</div>
+      </div>
+
+      <input
+        type="text"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        maxlength="6"
+        id="pin-setup-input"
+        class="vd-pin-input"
+        placeholder="••••••"
+        autocomplete="off"
+        aria-label="PIN 6 Digit"
+      />
+
+      <div class="vd-warn-box hidden" id="pin-weak-warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span data-i18n="pin_weak_warn">PIN ini cukup mudah ditebak, tapi tetap boleh dipakai jika Anda mau.</span>
+      </div>
+
+      <label class="toggle hidden" id="pin-setup-revoke-wrap" style="justify-content:center">
+        <input type="checkbox" id="pin-setup-revoke" />
+        <span class="toggle-track"></span>
+        <span class="toggle-label" data-i18n="pin_revoke_active">Putuskan sesi HP yang sedang aktif</span>
+      </label>
+
+      <div class="vd-modal-error" id="pin-setup-error"></div>
+
+      <div class="vd-modal-actions">
+        <button class="btn btn-primary" id="btn-save-custom-pin" type="button" style="height:40px;font-size:13.5px" data-i18n="pin_save_btn">Simpan PIN</button>
+        <div class="vd-modal-actions-row">
+          <button class="btn vd-btn-glass" id="btn-use-random-pin" type="button" style="flex:1;height:36px" data-i18n="pin_use_random">Gunakan PIN Acak</button>
+          <button class="btn btn-ghost hidden" id="btn-cancel-pin-modal" type="button" style="flex:0.8;height:36px" data-i18n="cancel">Batal</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Preview Lightbox -->
   <div class="lightbox hidden" id="lightbox">

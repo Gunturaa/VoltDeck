@@ -48,8 +48,8 @@
 - **Ambil Gambar Instan:** **Foto Webcam Laptop** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) & **Screenshot Layar** 1 ketuk langsung unduh ke HP.
 
 ### 🎛️ Remote Control Lengkap
-- **Telemetry Real-Time:** Pantau **Baterai (+ status charger)**, **CPU %**, **RAM %**, dan **Suhu (°C)** laptop secara langsung.
-- **Media & Audio:** Play/Pause, Next/Prev, Seek `±10 dtk` via D-Bus **MPRIS2** (YouTube, Spotify, VLC, Celluloid), slider volume + **Ganti Output Audio** (Speaker ↔ Headset/Bluetooth via `pactl`).
+- **Telemetry Real-Time & Live Sync 1.5 Detik:** Pantau **Baterai (+ status charger)**, **CPU %**, **RAM %**, dan **Suhu (°C)** sambil menyinkronkan **Media, Volume, dan Kecerahan** secara otomatis tiap 1.5 detik selama tab Remote terbuka (0% beban saat idle/tertutup).
+- **Media Cerdas (Sticky Player) & Audio:** Play/Pause, Next/Prev, Seek `±10 dtk` via D-Bus **MPRIS2** (Spotify, Chrome/YouTube, VLC, Celluloid) dengan **pelacakan player aktif** (pause Spotify tetap terkunci di Spotify, tidak loncat ke Chrome) + **chip pilih player 1-ketuk**, slider volume, serta **Ganti Output Audio** (Speaker ↔ Headset/Bluetooth via `pactl`).
 - **Layar, Privacy Mode 1-Ketuk & Daya Aman:** Slider kecerahan layar, **Matikan Layar Saja** (`DPMS`), **Mode Privasi 1-Ketuk** (*Pause media + Mute audio + Kunci layar + Matikan layar*), **Kunci Layar**, **Sleep**, **Restart**, dan **Matikan Laptop** dengan konfirmasi 2× ketuk + timer (`15 dtk / 15 mnt / 30 mnt / 60 mnt`) + tombol **Batalkan** di HP maupun Desktop.
 - **App Launcher & Pintasan Web Cepat:** Buka aplikasi terpasang di Linux (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, dll.) melalui *allowlist* aman, atau buka **YouTube, GitHub, WhatsApp Web, ChatGPT, dan Gmail** di browser laptop dalam 1 ketuk.
 - **Monitor Tugas RAM On-Demand:** Lihat proses dengan pemakaian RAM tertinggi secara *on-demand* (0% beban saat idle) dan tutup aplikasi yang hang dengan konfirmasi 2× ketuk (proses inti sistem dilindungi).
@@ -59,10 +59,10 @@
 ### 🌐 Dual-Mode & Keamanan
 - **`Offline · LAN` (Default):** Hanya mengizinkan koneksi Wi-Fi/LAN lokal (`192.168.x.x` / `10.x.x.x` / `.local`) dan memblokir akses eksternal (`403 Forbidden`).
 - **`Anywhere · VPN` (Tailscale):** Akses & kontrol laptop dari mana saja (4G/5G) lewat jaringan privat terenkripsi *end-to-end* Tailscale (tersedia di Linux, iOS, Android, Windows & macOS) — IP internet publik mentah tetap selalu diblokir.
-- **PIN Keamanan 6 Digit:** PIN acak kriptografis (`secrets`), verifikasi *constant-time*, proteksi *brute-force* (lockout 60 detik setelah 5× salah), rotasi PIN, dan pemutusan sesi instan.
+- **Custom PIN Permanen 6 Digit (Setup Awal):** Buat PIN 6 digit pilihan sendiri saat pertama kali membuka VoltDeck (atau gunakan PIN acak), tersimpan permanen di `~/.config/lanshare/config.json` (izin `0600`) dengan masking privasi + tombol tampil/sembunyikan, peringatan PIN lemah, verifikasi *constant-time*, proteksi *brute-force* (lockout 60 detik setelah 5× salah), ubah/acak PIN, dan pemutusan sesi instan.
 - **Trusted Device:** Tandai perangkat iOS/Android Anda sebagai **Perangkat Terpercaya** (disimpan sebagai hash SHA-256 di `~/.config/lanshare/trusted_devices.json`, izin `0600`) agar tetap otomatis masuk meski laptop di-restart.
-- **GTK3 Single-Instance & Standby Autostart Hemat RAM:** Mode `--tray` siaga di *system tray* Linux Mint tanpa memuat WebKit2 sampai jendela dibuka.
-- **Responsif All-Device:** Tampilan adaptif *Midnight Sapphire* di iPhone/HP, Tablet/iPad, dan Desktop Browser (dengan *left sidebar* otomatis di layar ≥1024px).
+- **GTK3 Single-Instance & Standby Autostart Hemat RAM:** Mode `--tray` siaga di *system tray* Linux Mint tanpa memuat WebKit2 sampai jendela dibuka (~25–35 MB RAM).
+- **Tampilan Style iOS / macOS + Mode Terang & Gelap:** Antarmuka *frosted glass* elegan bergaya Apple lengkap dengan toggle **Mode Terang & Gelap** yang sinkron di Desktop & Web, switch & segmented control khas iOS/macOS, keypad PIN bulat ala Lock Screen iPhone, ikon SVG monoline bersih (tanpa emoji), serta responsif di HP, Tablet/iPad, dan Desktop Browser.
 
 ---
 
@@ -130,6 +130,8 @@ sudo ufw allow in on tailscale0 to any port 8765 proto tcp comment 'VoltDeck Tai
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+
+Mencakup **15 pengujian end-to-end otomatis**: Custom PIN permanen & proteksi brute-force, Mode Terang/Gelap, streaming upload/download (`Range 206`, thumbnail, `.zip`), shared clipboard 2 arah + SSE, sticky MPRIS2 player & live sync remote, layar live MJPEG, Dual-Mode *Offline vs Anywhere*, Trusted Device lintas restart, App Launcher, Webcam, Galeri, Bilingual ID/EN, File Explorer aman, Task Monitor RAM, dan Mode Privasi 1-ketuk.
 
 ---
 

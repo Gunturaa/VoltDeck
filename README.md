@@ -63,8 +63,8 @@
 - **Instant Capture:** One-tap **Laptop Webcam Capture** (`/dev/video0` via GStreamer / `fswebcam` / `ffmpeg`) and **Desktop Screenshot** straight to your phone.
 
 ### 🎛️ Complete Remote Control Deck
-- **Real-Time Telemetry:** Monitor laptop **Battery (+ charging status)**, **CPU %**, **RAM %**, and **Temperature (°C)**.
-- **Media & Audio:** Play/Pause, Next/Previous, and `±10s` Seek via Session D-Bus **MPRIS2** (YouTube, Spotify, VLC, Celluloid), plus volume slider and **Audio Output Sink Switcher** (Speakers ↔ Headset/Bluetooth via `pactl`).
+- **Real-Time Telemetry & 1.5s Live Sync:** Monitor laptop **Battery (+ charging status)**, **CPU %**, **RAM %**, and **Temperature (°C)** while **Media, Volume, and Brightness** sync automatically in real time whenever the Remote tab is active (0% idle polling when closed).
+- **Smart Sticky Media & Audio:** Play/Pause, Next/Previous, and `±10s` Seek via Session D-Bus **MPRIS2** (Spotify, Chrome/YouTube, VLC, Celluloid) with **sticky active-player tracking** (pausing Spotify stays locked on Spotify instead of jumping to Chrome) + **1-tap multi-player switcher chips**, volume slider, and **Audio Output Sink Switcher** (Speakers ↔ Headset/Bluetooth via `pactl`).
 - **Display, 1-Tap Privacy Mode & Safe Power Controls:** Brightness slider, **Display Off** (`DPMS`), **1-Tap Privacy Mode** (*Pause media + Mute audio + Lock screen + Display Off*), **Lock Screen**, **Sleep**, **Restart**, and **Shutdown** protected by 2-step confirmation, selectable timer (`15s / 15m / 30m / 60m`), and a live cancel button on both phone and desktop.
 - **App Launcher & Quick Web Shortcuts:** Launch installed Linux desktop apps (Chrome, Firefox, Nemo, Terminal, VS Code, Spotify, LibreOffice, Settings, etc.) via a strict binary allowlist, or open **YouTube, GitHub, WhatsApp Web, ChatGPT, and Gmail** on your laptop in one tap.
 - **On-Demand RAM Task Monitor:** Inspect top memory-consuming user processes on demand and safely terminate frozen apps with 2-tap confirmation (core system/desktop daemons are strictly protected).
@@ -74,10 +74,10 @@
 ### 🌐 Dual-Mode Access & Security
 - **`Offline · LAN` (Default):** Strictly allows local Wi-Fi/LAN clients (`192.168.x.x`, `10.x.x.x`, `172.16–31.x.x`, `.local`) and rejects external/VPN traffic (`403 Forbidden`).
 - **`Anywhere · VPN` (Tailscale):** Control and transfer from anywhere (4G/5G) over your private end-to-end encrypted Tailscale mesh (available for Linux, iOS, Android, Windows & macOS) — raw public internet IPs remain strictly blocked.
-- **6-Digit Security PIN:** Cryptographically random PIN (`secrets`), constant-time verification, brute-force lockout (60s after 5 failed attempts), instant PIN rotation, and session revocation.
+- **Custom Persistent 6-Digit PIN:** Create your own personal 6-digit pairing PIN on first launch (or generate a random PIN), saved securely in `~/.config/lanshare/config.json` (`0600`) with privacy masking + show/hide toggle, weak-PIN warning, constant-time verification, brute-force lockout (60s after 5 failed attempts), instant PIN editing/rotation, and session revocation.
 - **Trusted Devices:** Approve your iOS/Android device as a **Trusted Device** (stored as SHA-256 hash only in `~/.config/lanshare/trusted_devices.json`, `0600`) for seamless auto-login across laptop restarts.
-- **GTK3 Single-Instance & Low-RAM Tray Standby:** `--tray` standby mode stays ready in the Linux Mint system tray without initializing WebKit2 until the window is opened.
-- **All-Device Responsive Web UI:** Midnight Sapphire UI that adapts seamlessly across phones (bottom nav bar), tablets (2–3 column grids), and desktop browsers (left sidebar + multi-column dashboard).
+- **GTK3 Single-Instance & Low-RAM Tray Standby:** `--tray` standby mode stays ready in the Linux Mint system tray without initializing WebKit2 until the window is opened (~25–35 MB RAM).
+- **Apple iOS / macOS Design with Light & Dark Mode:** Clean frosted-glass UI with Apple-style switches, segmented controls, circular iOS Lock Screen PIN keypad, monoline SVG icons (zero emojis), and synchronized **Light & Dark Mode** across Desktop, phones (bottom nav bar), tablets, and desktop browsers (left sidebar).
 
 ---
 
@@ -169,7 +169,7 @@ sudo ufw allow in on tailscale0 to any port 8765 proto tcp comment 'VoltDeck Tai
 │   ├── desktop_app.py            # GTK3 + WebKit2 Single-Instance app & Ayatana System Tray
 │   └── web/                      # Desktop & All-Device Responsive Web UI (HTML/CSS/JS)
 └── tests/
-    └── test_core.py              # End-to-end automated test suite (13 test cases)
+    └── test_core.py              # End-to-end automated test suite (15 test cases)
 ```
 
 ---
@@ -180,7 +180,7 @@ sudo ufw allow in on tailscale0 to any port 8765 proto tcp comment 'VoltDeck Tai
 python3 -m unittest discover -s tests -v
 ```
 
-Covers 6-digit PIN security & brute-force lockout, streaming upload & filename sanitization, streaming download (`Range 206`, thumbnails, streaming ZIP), two-way shared clipboard & SSE events, safe URL opening, remote controls & MJPEG streaming, Dual-Mode *Offline vs Anywhere* enforcement, Trusted Device persistence across restarts, App Launcher allowlist, Webcam snapshot, Laptop Gallery, Bilingual ID/EN i18n, Sandboxed File Explorer, On-Demand RAM Task Monitor, and 1-Tap Privacy Mode.
+Covers custom persistent 6-digit PIN & brute-force lockout, Light/Dark theme persistence, streaming upload & filename sanitization, streaming download (`Range 206`, thumbnails, streaming ZIP), two-way shared clipboard & SSE events, safe URL opening, sticky MPRIS2 player selection & realtime remote live sync, MJPEG screen view, Dual-Mode *Offline vs Anywhere* enforcement, Trusted Device persistence across restarts, App Launcher allowlist, Webcam snapshot, Laptop Gallery, Bilingual ID/EN i18n, Sandboxed File Explorer, On-Demand RAM Task Monitor, and 1-Tap Privacy Mode.
 
 ---
 

@@ -42,9 +42,28 @@
     armedKillPid: null,
     armedKillTimer: null,
     apps: [],
+    theme: 'dark',
     tab: 'files',
     sse: null,
   };
+
+  const SUN_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>`;
+  const MOON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+  const BOLT_MINI_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px;margin-left:2px;color:var(--emerald)" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+
+  function applyMobileTheme(theme, persist = true) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    state.theme = next;
+    document.documentElement.setAttribute('data-theme', next);
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.setAttribute('content', next === 'light' ? '#f2f2f7' : '#0b0e16');
+    const icon = next === 'dark' ? SUN_SVG : MOON_SVG;
+    if ($('btn-pin-theme-toggle')) $('btn-pin-theme-toggle').innerHTML = icon;
+    if ($('btn-m-theme-toggle')) $('btn-m-theme-toggle').innerHTML = icon;
+    if (persist) {
+      try { window.localStorage.setItem('voltdeck_theme', next); } catch {}
+    }
+  }
 
   const $ = (id) => document.getElementById(id);
   const tr = (k) => (window.VDI18n ? window.VDI18n.t(k) : k);
@@ -554,7 +573,7 @@
   function renderTelemetry(t) {
     if (!t || !t.available) return;
     if (t.battery_percent !== null && t.battery_percent !== undefined) {
-      $('t-bat').textContent = `${t.battery_percent}%${t.battery_plugged ? '⚡' : ''}`;
+      $('t-bat').innerHTML = `${Number(t.battery_percent)}%${t.battery_plugged ? BOLT_MINI_SVG : ''}`;
     } else {
       $('t-bat').textContent = 'AC';
     }
@@ -757,6 +776,9 @@
       state.remoteEnabled = cfg.remote_enabled !== false;
       if (cfg.language && window.VDI18n && !window.localStorage.getItem('voltdeck_lang_override')) {
         window.VDI18n.setLang(cfg.language, false);
+      }
+      if (cfg.theme && !window.localStorage.getItem('voltdeck_theme_override')) {
+        applyMobileTheme(cfg.theme, false);
       }
       updateRemoteAvailability();
     });
@@ -1031,6 +1053,16 @@
   // --- Bind UI Events ---
 
   function bindEvents() {
+    // Light / Dark Theme Toggle (iOS / macOS)
+    const toggleMobileTheme = () => {
+      const next = state.theme === 'dark' ? 'light' : 'dark';
+      applyMobileTheme(next, true);
+      try { window.localStorage.setItem('voltdeck_theme_override', '1'); } catch {}
+      toast(next === 'light' ? tr('theme_switched_light') : tr('theme_switched_dark'), 'info');
+    };
+    if ($('btn-pin-theme-toggle')) $('btn-pin-theme-toggle').addEventListener('click', toggleMobileTheme);
+    if ($('btn-m-theme-toggle')) $('btn-m-theme-toggle').addEventListener('click', toggleMobileTheme);
+
     // Language switchers (ID / EN) on PIN gate & main header
     const applyMobileLang = (lang) => {
       if (!window.VDI18n) return;
@@ -1784,6 +1816,12 @@
   async function init() {
     dismissBootSplash();
     try {
+      const savedTheme = window.localStorage.getItem('voltdeck_theme');
+      applyMobileTheme(savedTheme === 'light' ? 'light' : 'dark', false);
+    } catch {
+      applyMobileTheme('dark', false);
+    }
+    try {
       if (window.VDI18n) window.VDI18n.applyDomTranslations();
       bindEvents();
       renderPinSlots();
@@ -1798,6 +1836,9 @@
       const info = await res.json();
       if (info.language && window.VDI18n && !window.localStorage.getItem('voltdeck_lang_override')) {
         window.VDI18n.setLang(info.language, false);
+      }
+      if (info.theme && !window.localStorage.getItem('voltdeck_theme_override')) {
+        applyMobileTheme(info.theme, false);
       }
       state.hostName = info.device_name || 'Linux Mint';
       $('pin-host').textContent = state.hostName;

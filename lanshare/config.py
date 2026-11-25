@@ -66,6 +66,8 @@ class AppConfig:
     anywhere_allow_power: bool = True
     remote_control_enabled: bool = True
     language: str = "id"  # "id" | "en"
+    theme: str = "dark"  # "dark" | "light"
+    custom_pin: str = ""  # Empty until user creates or saves a persistent 6-digit PIN
     minimize_to_tray: bool = True
     notifications_enabled: bool = True
     window_width: int = 1080
@@ -112,6 +114,10 @@ class AppConfig:
                 json.dumps(self.to_dict(), indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
+            try:
+                os.chmod(tmp, 0o600)
+            except OSError:
+                pass
             tmp.replace(path)
         except Exception:
             pass

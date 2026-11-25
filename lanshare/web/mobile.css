@@ -1366,3 +1366,219 @@ html, body {
   width: 100%;
   max-width: 380px;
 }
+
+/* =========================================================
+   Apple iOS 18 / iPadOS / macOS Web Aesthetic & Light/Dark Layer
+   ========================================================= */
+html, body {
+  background: var(--bg-canvas);
+}
+
+.m-hero-backdrop {
+  background: radial-gradient(circle at 82% 18%, var(--accent-dim), transparent 55%), var(--bg-canvas);
+}
+
+.m-header {
+  background: var(--bg-bar);
+  backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.m-tabbar,
+.m-tabbar-4 {
+  background: var(--bg-bar);
+  backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.m-tab.active {
+  color: var(--accent);
+}
+
+.lang-switch {
+  background: var(--bg-seg);
+  border-radius: 10px;
+  padding: 2.5px;
+}
+
+.lang-btn.active {
+  background: var(--bg-seg-active);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+}
+
+/* iOS Grouped Cards */
+.pin-card,
+.send-card,
+.remote-card,
+.m-clip-latest,
+.m-clip-compose,
+.m-clip-item,
+.m-file-card,
+.gal-card,
+.telemetry-strip {
+  border-radius: 18px;
+  background: var(--bg-glass);
+  backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+.m-file-card,
+.m-clip-item,
+.gal-card {
+  border-radius: 14px;
+}
+
+/* iOS Lock Screen Circular Keypad */
+.pin-slot {
+  border-radius: 12px;
+  background: var(--bg-inset);
+  border: 1.5px solid var(--border-default);
+}
+
+.key-btn {
+  height: 56px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.key-btn.key-muted {
+  border-radius: 14px;
+  font-size: 13.5px;
+}
+
+/* iOS Segmented Controls */
+.r-subtabs {
+  background: var(--bg-seg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 3px;
+}
+
+.r-subtab {
+  border-radius: 9px;
+  border: none;
+  color: var(--text-secondary);
+}
+
+.r-subtab.active {
+  background: var(--bg-seg-active);
+  color: var(--text-primary);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.14);
+}
+
+.proc-row,
+.app-tile,
+.r-select,
+.r-text-input,
+.m-textarea,
+.m-clip-preview,
+.trackpad-surface,
+.screen-viewport,
+.media-chip,
+.folder-chip,
+.delay-chip {
+  background: var(--bg-inset);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.media-chip,
+.folder-chip,
+.delay-chip {
+  color: var(--text-secondary);
+}
+
+.media-chip.active,
+.folder-chip.active,
+.delay-chip.active {
+  background: var(--accent-dim);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.app-tile:hover,
+.app-tile:active {
+  border-color: var(--accent-border);
+  background: var(--bg-surface-2);
+}
+
+.r-ctrl-btn {
+  border-radius: 12px;
+}
+
+.btn-privacy-ios {
+  border-color: var(--accent-border) !important;
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+/* Light Mode Specific Refinements for Mobile & Tablet/Desktop Browser */
+[data-theme="light"] .m-hero-backdrop {
+  background: radial-gradient(circle at 82% 18%, rgba(0, 122, 255, 0.11), transparent 56%), #f2f2f7;
+}
+
+[data-theme="light"] .m-hero-glow {
+  background: radial-gradient(circle, rgba(0, 122, 255, 0.14), transparent 70%);
+}
+
+[data-theme="light"] .m-hero-art {
+  opacity: 0.22;
+  filter: drop-shadow(0 8px 18px rgba(0, 122, 255, 0.15));
+}
+
+[data-theme="light"] .m-tabbar,
+[data-theme="light"] .m-tabbar-4 {
+  background: rgba(249, 249, 251, 0.88);
+}
+
+[data-theme="light"] .key-btn {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .key-btn:active {
+  background: rgba(0, 122, 255, 0.14);
+}
+
+[data-theme="light"] .lightbox {
+  background: rgba(242, 242, 247, 0.96);
+}
+
+[data-theme="light"] .lightbox-bar {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+[data-theme="light"] .m-empty {
+  color: var(--text-muted);
+}
+
+@media (min-width: 1024px) {
+  .m-tabbar,
+  .m-tabbar-4 {
+    background: var(--bg-bar);
+  }
+
+  .m-tabbar-4 .m-tab.active {
+    background: var(--accent-dim);
+    border-color: transparent;
+    color: var(--accent);
+  }
+
+  .m-tabbar-4 .m-tab.active::before {
+    display: none;
+  }
+
+  [data-theme="light"] .m-hero-art {
+    opacity: 0.34;
+  }
+}

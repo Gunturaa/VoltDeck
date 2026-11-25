@@ -4,6 +4,10 @@
 
   const state = {
     pin: '',
+    pinConfigured: true,
+    pinVisible: false,
+    pinModalFirstTime: false,
+    theme: 'dark',
     accessMode: 'offline',
     baseUrl: '',
     mdnsUrl: '',
@@ -144,6 +148,53 @@
     return data;
   }
 
+  // --- Theme & PIN Utilities ---
+
+  const SUN_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>`;
+  const MOON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+  const EYE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+  const EYE_OFF_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+  function applyTheme(theme, persist = true) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    state.theme = next;
+    document.documentElement.setAttribute('data-theme', next);
+    if (persist) {
+      try { window.localStorage.setItem('voltdeck_theme', next); } catch {}
+    }
+    const toggleBtn = $('btn-theme-toggle');
+    if (toggleBtn) toggleBtn.innerHTML = next === 'dark' ? SUN_SVG : MOON_SVG;
+    document.querySelectorAll('[data-theme-btn]').forEach((b) => {
+      b.classList.toggle('active', b.getAttribute('data-theme-btn') === next);
+    });
+  }
+
+  function isWeakPinClient(pin) {
+    if (!/^\d{6}$/.test(pin)) return false;
+    const weakSet = new Set(['000000', '111111', '222222', '333333', '444444', '555555', '666666', '777777', '888888', '999999', '123456', '654321', '012345', '543210', '123123', '112233', '121212', '102030', '000001', '987654']);
+    if (weakSet.has(pin)) return true;
+    if (new Set(pin.split('')).size <= 2) return true;
+    return '01234567890123456789'.includes(pin) || '98765432109876543210'.includes(pin);
+  }
+
+  function openPinModal(firstTime = false) {
+    state.pinModalFirstTime = firstTime;
+    $('pin-modal-title').textContent = firstTime ? tr('pin_setup_title') : tr('pin_change_title');
+    $('pin-modal-sub').textContent = firstTime ? tr('pin_setup_sub') : tr('pin_change_sub');
+    $('pin-setup-input').value = '';
+    $('pin-setup-error').textContent = '';
+    $('pin-weak-warn').classList.add('hidden');
+    $('pin-setup-revoke').checked = false;
+    $('pin-setup-revoke-wrap').classList.toggle('hidden', firstTime);
+    $('btn-cancel-pin-modal').classList.toggle('hidden', firstTime);
+    $('pin-setup-modal').classList.remove('hidden');
+    setTimeout(() => $('pin-setup-input').focus(), 40);
+  }
+
+  function closePinModal() {
+    $('pin-setup-modal').classList.add('hidden');
+  }
+
   // --- Rendering ---
 
   function renderPin(pin) {
@@ -151,11 +202,22 @@
     const digits = state.pin.padEnd(6, '-').slice(0, 6).split('');
     const slots = $('pin-grid').querySelectorAll('.pin-digit');
     slots.forEach((slot, i) => {
-      slot.textContent = digits[i] || '-';
+      if (state.pinVisible) {
+        slot.textContent = digits[i] || '-';
+        slot.classList.remove('masked');
+      } else {
+        slot.textContent = state.pin ? '•' : '-';
+        slot.classList.add('masked');
+      }
     });
+    const eyeBtn = $('btn-toggle-pin-vis');
+    if (eyeBtn) eyeBtn.innerHTML = state.pinVisible ? EYE_OFF_SVG : EYE_SVG;
   }
 
   function renderSecurity(sec) {
+    if ('pin_configured' in sec) {
+      state.pinConfigured = Boolean(sec.pin_configured);
+    }
     if (sec.pin) renderPin(sec.pin);
     if (sec.access_mode) {
       state.accessMode = sec.access_mode;
@@ -231,6 +293,9 @@
       if (window.VDI18n.getLang() !== sec.config.language) {
         window.VDI18n.setLang(sec.config.language, true);
       }
+    }
+    if (sec.config && sec.config.theme) {
+      applyTheme(sec.config.theme, true);
     }
 
     if ('mdns_url' in sec) {
@@ -527,6 +592,9 @@
       renderTransfers(data.transfers);
       renderClipboard(data.clipboard);
       renderPowerBanner(data.power);
+      if (data.pin_configured === false) {
+        openPinModal(true);
+      }
     } catch (err) {
       toast(`Gagal memuat status: ${err.message}`, 'error');
     }
@@ -616,6 +684,90 @@
   // --- Event Listeners ---
 
   function bindEvents() {
+    // Theme Switcher (Dark | Light) — persists to server config & syncs to connected phones!
+    const setDesktopTheme = async (theme) => {
+      applyTheme(theme, true);
+      await api('/api/desktop/settings', {
+        method: 'POST',
+        body: JSON.stringify({ theme }),
+      }).catch(() => {});
+      toast(theme === 'light' ? tr('theme_switched_light') : tr('theme_switched_dark'), 'info');
+    };
+    if ($('btn-theme-toggle')) {
+      $('btn-theme-toggle').addEventListener('click', () => {
+        setDesktopTheme(state.theme === 'dark' ? 'light' : 'dark');
+      });
+    }
+    document.querySelectorAll('[data-theme-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => setDesktopTheme(btn.getAttribute('data-theme-btn')));
+    });
+
+    // Show / Hide PIN toggle
+    if ($('btn-toggle-pin-vis')) {
+      $('btn-toggle-pin-vis').addEventListener('click', () => {
+        state.pinVisible = !state.pinVisible;
+        renderPin(state.pin);
+      });
+    }
+
+    // Open Custom PIN Editor modal
+    if ($('btn-edit-pin')) {
+      $('btn-edit-pin').addEventListener('click', () => openPinModal(false));
+    }
+    if ($('btn-cancel-pin-modal')) {
+      $('btn-cancel-pin-modal').addEventListener('click', closePinModal);
+    }
+    if ($('pin-setup-input')) {
+      $('pin-setup-input').addEventListener('input', (e) => {
+        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 6);
+        e.target.value = cleaned;
+        $('pin-setup-error').textContent = '';
+        $('pin-weak-warn').classList.toggle('hidden', !isWeakPinClient(cleaned));
+      });
+      $('pin-setup-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') $('btn-save-custom-pin').click();
+      });
+    }
+    if ($('btn-save-custom-pin')) {
+      $('btn-save-custom-pin').addEventListener('click', async () => {
+        const val = ($('pin-setup-input').value || '').replace(/\D/g, '');
+        if (val.length !== 6) {
+          $('pin-setup-error').textContent = tr('pin_need_6_digits');
+          return;
+        }
+        try {
+          const revoke = Boolean($('pin-setup-revoke').checked);
+          await api('/api/desktop/pin/set', {
+            method: 'POST',
+            body: JSON.stringify({ pin: val, revoke_sessions: revoke }),
+          });
+          state.pinVisible = true;
+          renderPin(val);
+          closePinModal();
+          toast(tr('pin_saved_ok'), 'success');
+        } catch (err) {
+          $('pin-setup-error').textContent = err.message;
+        }
+      });
+    }
+    if ($('btn-use-random-pin')) {
+      $('btn-use-random-pin').addEventListener('click', async () => {
+        try {
+          const revoke = Boolean($('pin-setup-revoke').checked);
+          const res = await api('/api/desktop/pin/rotate', {
+            method: 'POST',
+            body: JSON.stringify({ revoke_sessions: revoke }),
+          });
+          state.pinVisible = true;
+          renderPin(res.pin);
+          closePinModal();
+          toast(tr('pin_random_saved'), 'success');
+        } catch (err) {
+          $('pin-setup-error').textContent = err.message;
+        }
+      });
+    }
+
     // Language Switcher (ID | EN) — persists to server config & syncs to connected phones!
     document.querySelectorAll('[data-lang-btn]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -1067,6 +1219,12 @@
   // Expose tiny hook so Python GTK DnD can show a toast
   window.__lanshareToast = toast;
 
+  try {
+    const savedTheme = window.localStorage.getItem('voltdeck_theme');
+    applyTheme(savedTheme === 'light' ? 'light' : 'dark', false);
+  } catch {
+    applyTheme('dark', false);
+  }
   if (window.VDI18n) window.VDI18n.applyDomTranslations();
   bindEvents();
   loadFullState();

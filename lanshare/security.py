@@ -22,6 +22,25 @@ LOCKOUT_SECONDS = 60
 SESSION_TTL_SECONDS = 24 * 3600
 SESSION_COOKIE_NAME = "lanshare_sid"
 TRUST_COOKIE_NAME = "lanshare_trust"
+WEAK_PINS = {
+    "000000", "111111", "222222", "333333", "444444",
+    "555555", "666666", "777777", "888888", "999999",
+    "123456", "654321", "012345", "543210", "123123",
+    "112233", "121212", "102030", "000001", "987654",
+}
+
+
+def is_weak_pin(pin: str) -> bool:
+    cleaned = re.sub(r"\s+", "", str(pin or ""))
+    if len(cleaned) != PIN_LENGTH or not cleaned.isdigit():
+        return True
+    if cleaned in WEAK_PINS:
+        return True
+    if len(set(cleaned)) <= 2:
+        return True
+    if cleaned in "01234567890123456789" or cleaned in "98765432109876543210":
+        return True
+    return False
 
 
 @dataclass
@@ -105,12 +124,18 @@ def parse_device_label(user_agent: str) -> str:
 class SecurityManager:
     """Thread-safe authentication, persistent trusted devices, & session manager."""
 
-    def __init__(self, trusted_file: Path = DEFAULT_TRUSTED_FILE) -> None:
+    def __init__(self, trusted_file: Path = DEFAULT_TRUSTED_FILE, initial_pin: str = "") -> None:
         self._lock = threading.RLock()
         self._trusted_file = trusted_file
         self._signing_key: bytes = secrets.token_bytes(32)
         self.desktop_token: str = secrets.token_urlsafe(32)
-        self._pin: str = self._new_pin()
+        cleaned_init = re.sub(r"\s+", "", str(initial_pin or ""))
+        if len(cleaned_init) == PIN_LENGTH and cleaned_init.isdigit():
+            self._pin: str = cleaned_init
+            self._pin_configured: bool = True
+        else:
+            self._pin = self._new_pin()
+            self._pin_configured = False
         self._pin_created_at: float = time.time()
         self._sessions: dict[str, ConnectedDevice] = {}
         self._short_id_map: dict[str, str] = {}
@@ -168,9 +193,30 @@ class SecurityManager:
         with self._lock:
             return self._pin_created_at
 
+    @property
+    def pin_configured(self) -> bool:
+        with self._lock:
+            return self._pin_configured
+
+    def set_custom_pin(self, pin: str, revoke_sessions: bool = False) -> tuple[bool, str, bool]:
+        """Set a persistent user-defined 6-digit PIN. Returns (ok, error_msg, is_weak)."""
+        cleaned = re.sub(r"\s+", "", str(pin or ""))
+        if len(cleaned) != PIN_LENGTH or not cleaned.isdigit():
+            return False, "PIN harus terdiri dari tepat 6 digit angka.", False
+        with self._lock:
+            self._pin = cleaned
+            self._pin_configured = True
+            self._pin_created_at = time.time()
+            self._rate_limits.clear()
+            if revoke_sessions:
+                self._sessions.clear()
+                self._short_id_map.clear()
+            return True, "", is_weak_pin(cleaned)
+
     def rotate_pin(self, revoke_sessions: bool = False) -> str:
         with self._lock:
             self._pin = self._new_pin()
+            self._pin_configured = True
             self._pin_created_at = time.time()
             self._rate_limits.clear()
             if revoke_sessions:

@@ -157,8 +157,10 @@ class LANShareState:
         self.config = config
         if self.config.access_mode not in ("offline", "anywhere"):
             self.config.access_mode = "offline"
+        if self.config.theme not in ("dark", "light"):
+            self.config.theme = "dark"
         self.port = port
-        self.security = SecurityManager(trusted_file=trusted_file)
+        self.security = SecurityManager(trusted_file=trusted_file, initial_pin=config.custom_pin)
         self.storage = FileStorageManager(config.receive_path(), device_name=config.device_name)
         self.clipboard = ClipboardStore()
         self.events = EventBroker()
@@ -280,6 +282,7 @@ class LANShareState:
             "version": __version__,
             "device_name": self.config.device_name,
             "pin": self.security.pin,
+            "pin_configured": self.security.pin_configured,
             "pin_created_at": self.security.pin_created_at,
             "port": self.port,
             "access_mode": self.config.access_mode,
@@ -302,6 +305,7 @@ class LANShareState:
                 "anywhere_allow_power": self.config.anywhere_allow_power,
                 "remote_control_enabled": self.config.remote_control_enabled,
                 "language": self.config.language,
+                "theme": self.config.theme,
                 "minimize_to_tray": self.config.minimize_to_tray,
                 "autostart_enabled": is_autostart_enabled(),
                 "notifications_enabled": self.config.notifications_enabled,
@@ -322,6 +326,7 @@ class LANShareState:
             "access_mode": self.config.access_mode,
             "client_zone": client_zone,
             "language": self.config.language,
+            "theme": self.config.theme,
             "trusted": bool(device and device.trust_id),
             "has_pending_trust": bool(device and device.pending_trust_cookie),
             "files": self.storage.list_files(),
@@ -361,6 +366,7 @@ class LANShareState:
             "security_changed",
             {
                 "pin": self.security.pin,
+                "pin_configured": self.security.pin_configured,
                 "pin_created_at": self.security.pin_created_at,
                 "access_mode": self.config.access_mode,
                 "base_url": base_url,
@@ -382,6 +388,7 @@ class LANShareState:
                     "anywhere_allow_power": self.config.anywhere_allow_power,
                     "remote_control_enabled": self.config.remote_control_enabled,
                     "language": self.config.language,
+                    "theme": self.config.theme,
                     "minimize_to_tray": self.config.minimize_to_tray,
                     "autostart_enabled": is_autostart_enabled(),
                     "notifications_enabled": self.config.notifications_enabled,
@@ -395,6 +402,7 @@ class LANShareState:
                 "remote_enabled": self.config.remote_control_enabled,
                 "access_mode": self.config.access_mode,
                 "language": self.config.language,
+                "theme": self.config.theme,
             },
             roles={"mobile"},
         )
@@ -714,6 +722,7 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
                     "access_mode": self.state.config.access_mode,
                     "client_zone": self._client_zone(),
                     "language": self.state.config.language,
+                    "theme": self.state.config.theme,
                     "authenticated": role is not None,
                     "trusted": bool(dev and dev.trust_id),
                     "role": role,
@@ -1129,14 +1138,39 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
     def _handle_desktop_post(self, path: str) -> None:
         body = self._read_json_body() or {}
 
-        if path == "/api/desktop/pin/rotate":
+        if path == "/api/desktop/pin/set":
+            raw_pin = str(body.get("pin", ""))
             revoke = bool(body.get("revoke_sessions", False))
-            new_pin = self.state.security.rotate_pin(revoke_sessions=revoke)
+            ok, err, weak = self.state.security.set_custom_pin(raw_pin, revoke_sessions=revoke)
+            if not ok:
+                self._send_error_json(HTTPStatus.BAD_REQUEST, err)
+                return
+            self.state.config.custom_pin = self.state.security.pin
+            self.state.config.save()
             if revoke:
                 self.state.events.revoke_all_mobile()
                 self.state.broadcast_devices()
             self.state.broadcast_security()
-            self._send_json({"ok": True, "pin": new_pin})
+            self._send_json(
+                {
+                    "ok": True,
+                    "pin": self.state.security.pin,
+                    "pin_configured": True,
+                    "weak_warning": weak,
+                }
+            )
+            return
+
+        if path == "/api/desktop/pin/rotate":
+            revoke = bool(body.get("revoke_sessions", False))
+            new_pin = self.state.security.rotate_pin(revoke_sessions=revoke)
+            self.state.config.custom_pin = new_pin
+            self.state.config.save()
+            if revoke:
+                self.state.events.revoke_all_mobile()
+                self.state.broadcast_devices()
+            self.state.broadcast_security()
+            self._send_json({"ok": True, "pin": new_pin, "pin_configured": True})
             return
 
         if path == "/api/desktop/interface":
@@ -1179,6 +1213,8 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
                 cfg.remote_control_enabled = bool(body["remote_control_enabled"])
             if "language" in body and body["language"] in ("id", "en"):
                 cfg.language = str(body["language"])
+            if "theme" in body and body["theme"] in ("dark", "light"):
+                cfg.theme = str(body["theme"])
             if "minimize_to_tray" in body:
                 cfg.minimize_to_tray = bool(body["minimize_to_tray"])
             if "autostart_enabled" in body:
