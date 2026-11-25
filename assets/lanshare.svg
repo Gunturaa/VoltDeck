@@ -1,23 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#141922"/>
-      <stop offset="100%" stop-color="#090B0E"/>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#222B3E"/>
+      <stop offset="50%" stop-color="#0A0D16"/>
+      <stop offset="100%" stop-color="#0E1B3A"/>
     </linearGradient>
-    <linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#67E8F9"/>
-      <stop offset="55%" stop-color="#22D3EE"/>
-      <stop offset="100%" stop-color="#06B6D4"/>
+    <linearGradient id="bolt" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="45%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#2563EB"/>
     </linearGradient>
   </defs>
-  <!-- Precision Dark Squircle Base -->
-  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bg)"/>
-  <rect x="26" y="26" width="460" height="460" rx="106" fill="none" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="4"/>
-  <!-- Chamfered Engineer Reticle -->
-  <path d="M148 76 H364 L436 148 V364 L364 436 H148 L76 364 V148 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.09" stroke-width="4"/>
-  <circle cx="256" cy="256" r="154" fill="none" stroke="#22D3EE" stroke-opacity="0.18" stroke-width="4" stroke-dasharray="14 14"/>
-  <!-- Modern Engineer PETIR (Lightning Bolt) -->
-  <path d="M284 106 L160 278 H250 L226 406 L354 230 H264 Z" fill="url(#bolt)"/>
-  <!-- Live Emerald Telemetry Node -->
-  <circle cx="384" cy="384" r="18" fill="#34D399"/>
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#glass)"/>
+  <rect x="26" y="26" width="460" height="460" rx="110" fill="none" stroke="#93C5FD" stroke-opacity="0.34" stroke-width="5"/>
+  <path d="M300 104 L158 282 H248 L212 408 L354 226 H264 Z" fill="url(#bolt)"/>
 </svg>

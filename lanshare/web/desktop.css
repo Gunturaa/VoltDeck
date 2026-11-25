@@ -35,14 +35,46 @@ html, body {
   gap: 10px;
 }
 
-.vd-brand-orb {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #60a5fa, #2563eb);
-  display: grid;
-  place-items: center;
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.55);
+.vd-brand-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+}
+
+.lang-switch {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: rgba(13, 19, 34, 0.85);
+  border: 1px solid var(--border-subtle);
+  gap: 2px;
+}
+
+.lang-btn {
+  height: 26px;
+  min-width: 30px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 120ms var(--ease);
+}
+
+.lang-btn:hover {
+  color: var(--text-primary);
+}
+
+.lang-btn.active {
+  background: rgba(59, 130, 246, 0.25);
+  color: #eff6ff;
 }
 
 .vd-brand-name {

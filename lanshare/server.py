@@ -301,6 +301,7 @@ class LANShareState:
                 "access_mode": self.config.access_mode,
                 "anywhere_allow_power": self.config.anywhere_allow_power,
                 "remote_control_enabled": self.config.remote_control_enabled,
+                "language": self.config.language,
                 "minimize_to_tray": self.config.minimize_to_tray,
                 "autostart_enabled": is_autostart_enabled(),
                 "notifications_enabled": self.config.notifications_enabled,
@@ -320,6 +321,7 @@ class LANShareState:
             "peer_name": device.device_name if device else "Desktop",
             "access_mode": self.config.access_mode,
             "client_zone": client_zone,
+            "language": self.config.language,
             "trusted": bool(device and device.trust_id),
             "has_pending_trust": bool(device and device.pending_trust_cookie),
             "files": self.storage.list_files(),
@@ -348,7 +350,8 @@ class LANShareState:
             roles={"desktop"},
         )
 
-    def broadcast_security(self) -> None:
+    def broadcast_security(self, network_changed: bool = False) -> None:
+        ifaces = self.refresh_interfaces()
         base_url = self.get_lan_url(include_pin=False, prefer_mdns=False)
         mdns_url = self.get_mdns_url(include_pin=False)
         anywhere_url = self.get_anywhere_url()
@@ -368,6 +371,8 @@ class LANShareState:
                 "qr_url": qr_url,
                 "qr_data_uri": generate_qr_data_uri(qr_url),
                 "active_interface": self.active_interface.to_dict(),
+                "interfaces": [i.to_dict() for i in ifaces],
+                "network_changed": network_changed,
                 "receive_dir": str(self.storage.receive_dir),
                 "config": {
                     "clipboard_auto_sync": self.config.clipboard_auto_sync,
@@ -376,6 +381,7 @@ class LANShareState:
                     "access_mode": self.config.access_mode,
                     "anywhere_allow_power": self.config.anywhere_allow_power,
                     "remote_control_enabled": self.config.remote_control_enabled,
+                    "language": self.config.language,
                     "minimize_to_tray": self.config.minimize_to_tray,
                     "autostart_enabled": is_autostart_enabled(),
                     "notifications_enabled": self.config.notifications_enabled,
@@ -388,6 +394,7 @@ class LANShareState:
             {
                 "remote_enabled": self.config.remote_control_enabled,
                 "access_mode": self.config.access_mode,
+                "language": self.config.language,
             },
             roles={"mobile"},
         )
@@ -625,6 +632,7 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
             # Allow icon assets from assets/ or assets/icons/
             alt_map = {
                 "icon.svg": ASSETS_DIR / "lanshare.svg",
+                "app-icon.png": ASSETS_DIR / "icons" / "lanshare-128.png",
                 "apple-touch-icon.png": ASSETS_DIR / "icons" / "lanshare-180.png",
                 "favicon.png": ASSETS_DIR / "icons" / "lanshare-64.png",
                 "hero-character.png": ASSETS_DIR / "hero_character.png",
@@ -705,6 +713,7 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
                     "device_name": self.state.config.device_name,
                     "access_mode": self.state.config.access_mode,
                     "client_zone": self._client_zone(),
+                    "language": self.state.config.language,
                     "authenticated": role is not None,
                     "trusted": bool(dev and dev.trust_id),
                     "role": role,
@@ -1143,6 +1152,8 @@ class LANShareRequestHandler(BaseHTTPRequestHandler):
                 cfg.anywhere_allow_power = bool(body["anywhere_allow_power"])
             if "remote_control_enabled" in body:
                 cfg.remote_control_enabled = bool(body["remote_control_enabled"])
+            if "language" in body and body["language"] in ("id", "en"):
+                cfg.language = str(body["language"])
             if "minimize_to_tray" in body:
                 cfg.minimize_to_tray = bool(body["minimize_to_tray"])
             if "autostart_enabled" in body:
@@ -1774,10 +1785,35 @@ class LANShareServer:
         )
         self._httpd = _StreamingHTTPServer(("0.0.0.0", self.port), self.state)
         self._thread: Optional[threading.Thread] = None
+        self._net_stop = threading.Event()
+        self._net_thread: Optional[threading.Thread] = None
+
+    def _network_watcher_loop(self) -> None:
+        """Auto-detect Wi-Fi / LAN IP or Tailscale changes every 4s and push live QR/URL updates."""
+        last_sig = self._current_network_signature()
+        while not self._net_stop.wait(4.0):
+            try:
+                cur_sig = self._current_network_signature()
+                if cur_sig != last_sig:
+                    last_sig = cur_sig
+                    self.state.broadcast_security(network_changed=True)
+            except Exception:
+                pass
+
+    def _current_network_signature(self) -> tuple:
+        ifaces = self.state.refresh_interfaces()
+        ts = self.state.refresh_tailscale()
+        return (
+            tuple((i.name, i.ip) for i in ifaces),
+            self.state.active_interface.ip,
+            ts.get("running"),
+            ts.get("ip"),
+        )
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
+        self._net_stop.clear()
         self._thread = threading.Thread(
             target=self._httpd.serve_forever,
             kwargs={"poll_interval": 0.25},
@@ -1785,8 +1821,15 @@ class LANShareServer:
             daemon=True,
         )
         self._thread.start()
+        self._net_thread = threading.Thread(
+            target=self._network_watcher_loop,
+            name="voltdeck-netwatch",
+            daemon=True,
+        )
+        self._net_thread.start()
 
     def stop(self) -> None:
+        self._net_stop.set()
         self._httpd._stopping = True
         self.state.remote.shutdown_cleanup()
         self.state.events.close_all()

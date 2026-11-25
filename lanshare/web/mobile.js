@@ -33,6 +33,7 @@
   };
 
   const $ = (id) => document.getElementById(id);
+  const tr = (k) => (window.VDI18n ? window.VDI18n.t(k) : k);
 
   function escHtml(str) {
     return String(str ?? '')
@@ -596,7 +597,11 @@
       renderPowerState(JSON.parse(e.data).power);
     });
     es.addEventListener('remote_config_changed', (e) => {
-      state.remoteEnabled = JSON.parse(e.data).remote_enabled !== false;
+      const cfg = JSON.parse(e.data);
+      state.remoteEnabled = cfg.remote_enabled !== false;
+      if (cfg.language && window.VDI18n && !window.localStorage.getItem('voltdeck_lang_override')) {
+        window.VDI18n.setLang(cfg.language, false);
+      }
       updateRemoteAvailability();
     });
     es.addEventListener('trust_granted', () => {
@@ -870,6 +875,28 @@
   // --- Bind UI Events ---
 
   function bindEvents() {
+    // Language switchers (ID / EN) on PIN gate & main header
+    const applyMobileLang = (lang) => {
+      if (!window.VDI18n) return;
+      window.VDI18n.setLang(lang, true);
+      try {
+        window.localStorage.setItem('voltdeck_lang_override', '1');
+      } catch {}
+      renderFiles();
+      renderClipboard();
+      renderGallery();
+      toast(lang === 'en' ? 'Language: English' : 'Bahasa: Indonesia', 'info');
+    };
+    document.querySelectorAll('[data-lang-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => applyMobileLang(btn.getAttribute('data-lang-btn')));
+    });
+    if ($('btn-lang-cycle')) {
+      $('btn-lang-cycle').addEventListener('click', () => {
+        const next = window.VDI18n && window.VDI18n.getLang() === 'id' ? 'en' : 'id';
+        applyMobileLang(next);
+      });
+    }
+
     // Keypad buttons
     $('keypad').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-key]');
@@ -1485,6 +1512,7 @@
   // --- Bootstrap ---
 
   async function init() {
+    if (window.VDI18n) window.VDI18n.applyDomTranslations();
     bindEvents();
     renderPinSlots();
     dismissBootSplash();
@@ -1494,6 +1522,9 @@
         headers: authHeaders(),
       });
       const info = await res.json();
+      if (info.language && window.VDI18n && !window.localStorage.getItem('voltdeck_lang_override')) {
+        window.VDI18n.setLang(info.language, false);
+      }
       state.hostName = info.device_name || 'Linux Mint';
       $('pin-host').textContent = state.hostName;
       if (info.authenticated) {

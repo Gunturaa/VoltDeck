@@ -65,6 +65,7 @@ class AppConfig:
     access_mode: str = "offline"  # "offline" (LAN only) | "anywhere" (LAN + Tailscale VPN)
     anywhere_allow_power: bool = True
     remote_control_enabled: bool = True
+    language: str = "id"  # "id" | "en"
     minimize_to_tray: bool = True
     notifications_enabled: bool = True
     window_width: int = 1080

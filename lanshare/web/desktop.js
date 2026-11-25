@@ -22,6 +22,7 @@
   };
 
   const $ = (id) => document.getElementById(id);
+  const tr = (k) => (window.VDI18n ? window.VDI18n.t(k) : k);
 
   // --- Utilities ---
 
@@ -186,11 +187,9 @@
     }
 
     $('wrap-qr-pin').classList.toggle('hidden', isAnywhere);
-    $('qr-section-title').textContent = isAnywhere ? 'QR Anywhere (Tailscale)' : 'QR Pairing (LAN)';
+    $('qr-section-title').textContent = isAnywhere ? tr('qr_pairing_anywhere') : tr('qr_pairing_lan');
     $('qr-caption').textContent =
-      isAnywhere && state.anywhereUrl
-        ? 'Gunakan Tailscale untuk mengakses server dari mana saja.'
-        : 'Pindai dengan Kamera iPhone lalu buka di Safari.';
+      isAnywhere && state.anywhereUrl ? tr('qr_desc_anywhere') : tr('qr_desc_lan');
 
     const dot = $('ts-dot');
     const statusLabel = $('vd-status-label');
@@ -198,28 +197,40 @@
       const ts = state.tailscale || {};
       if (ts.running && state.anywhereUrl) {
         dot.style.background = 'var(--emerald)';
-        $('ts-status-text').textContent = 'Tailscale Online';
+        $('ts-status-text').textContent = tr('ts_online');
         $('ts-hint').classList.add('hidden');
         $('ts-meta').classList.remove('hidden');
         $('anywhere-url-text').textContent = state.anywhereUrl.replace(/^http:\/\//, '');
-        if (statusLabel) statusLabel.textContent = 'Tailscale VPN · Aman & Stabil';
+        if (statusLabel) statusLabel.textContent = tr('status_vpn_stable');
       } else {
         dot.style.background = 'var(--amber)';
         $('ts-status-text').textContent = ts.installed
           ? `Tailscale: ${ts.backend_state || 'Offline'}`
-          : 'Tailscale Belum Terpasang';
+          : 'Tailscale Offline';
         $('ts-hint').classList.remove('hidden');
         $('ts-meta').classList.add('hidden');
-        $('anywhere-url-text').textContent = 'Belum aktif';
-        if (statusLabel) statusLabel.textContent = 'Menunggu Tailscale';
+        $('anywhere-url-text').textContent = 'Offline';
+        if (statusLabel) statusLabel.textContent = tr('status_ts_wait');
       }
     } else {
       dot.style.background = 'var(--emerald)';
-      $('ts-status-text').textContent = 'Mode Offline · LAN';
+      $('ts-status-text').textContent = tr('mode_offline_title');
       $('ts-hint').classList.add('hidden');
       $('ts-meta').classList.add('hidden');
       $('anywhere-url-text').textContent = (state.baseUrl || '').replace(/^http:\/\//, '') || '—';
-      if (statusLabel) statusLabel.textContent = 'Koneksi Aman & Stabil';
+      if (statusLabel) statusLabel.textContent = tr('status_stable');
+    }
+
+    if (sec.interfaces) {
+      renderInterfaces(sec.interfaces, sec.active_interface);
+    }
+    if (sec.network_changed && activeTopUrl) {
+      toast(`${tr('network_updated')} ${activeTopUrl}`, 'info');
+    }
+    if (sec.config && sec.config.language && window.VDI18n) {
+      if (window.VDI18n.getLang() !== sec.config.language) {
+        window.VDI18n.setLang(sec.config.language, true);
+      }
     }
 
     if ('mdns_url' in sec) {
@@ -308,7 +319,7 @@
     $('devices-count').textContent = String(state.devices.length);
     const list = $('devices-list');
     if (state.devices.length === 0) {
-      list.innerHTML = '<div class="empty-inline">MENUNGGU KONEKSI LAN</div>';
+      list.innerHTML = `<div class="empty-inline">${escHtml(tr('waiting_connection'))}</div>`;
     } else {
       list.innerHTML = state.devices
         .map((d) => {
@@ -317,8 +328,8 @@
             ? '<span class="tag tag-out" style="height:17px;font-size:9.5px">VPN</span>'
             : '<span class="tag tag-in" style="height:17px;font-size:9.5px">LAN</span>';
           const trustAction = d.trusted
-            ? '<span class="tag tag-in" style="height:22px;font-size:9.5px" title="Auto-login aktif walau laptop restart">TRUST</span>'
-            : `<button class="btn btn-sm" data-trust="${escHtml(d.id)}" style="height:24px;padding:0 7px;font-size:11px" title="Percayai perangkat ini agar bisa auto-login tanpa PIN walau laptop restart">Percayai</button>`;
+            ? '<span class="tag tag-in" style="height:22px;font-size:9.5px">TRUST</span>'
+            : `<button class="btn btn-sm" data-trust="${escHtml(d.id)}" style="height:24px;padding:0 7px;font-size:11px">${escHtml(tr('trust_btn'))}</button>`;
           return `
         <div class="device-row">
           <div class="device-info">
@@ -330,7 +341,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:4px">
             ${trustAction}
-            <button class="btn btn-sm btn-ghost" data-revoke="${escHtml(d.id)}" style="height:24px;padding:0 6px" title="Putuskan sesi">✕</button>
+            <button class="btn btn-sm btn-ghost" data-revoke="${escHtml(d.id)}" style="height:24px;padding:0 6px" title="Disconnect">✕</button>
           </div>
         </div>`;
         })
@@ -353,10 +364,10 @@
             <div class="device-info">
               <div class="device-meta">
                 <div class="device-name" title="${escHtml(t.device_name)}">${escHtml(t.device_name)}</div>
-                <div class="device-ip">Auto-login aktif</div>
+                <div class="device-ip">${escHtml(tr('auto_login_active'))}</div>
               </div>
             </div>
-            <button class="btn btn-sm btn-danger" data-untrust="${escHtml(t.trust_id)}" style="height:24px;padding:0 7px;font-size:11px">Cabut</button>
+            <button class="btn btn-sm btn-danger" data-untrust="${escHtml(t.trust_id)}" style="height:24px;padding:0 7px;font-size:11px">${escHtml(tr('revoke_trust'))}</button>
           </div>`
           )
           .join('');
@@ -605,6 +616,23 @@
   // --- Event Listeners ---
 
   function bindEvents() {
+    // Language Switcher (ID | EN) — persists to server config & syncs to connected phones!
+    document.querySelectorAll('[data-lang-btn]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const lang = btn.getAttribute('data-lang-btn');
+        if (!lang || !window.VDI18n) return;
+        window.VDI18n.setLang(lang, true);
+        renderFiles(state.files);
+        renderClipboard(state.clipboard);
+        renderDevices(state.devices);
+        await api('/api/desktop/settings', {
+          method: 'POST',
+          body: JSON.stringify({ language: lang }),
+        }).catch(() => {});
+        toast(lang === 'en' ? 'Language switched to English' : 'Bahasa diubah ke Indonesia', 'success');
+      });
+    });
+
     // Left Sidebar Navigation (Home | Transfer | Clipboard | Settings)
     document.querySelectorAll('.vd-nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1039,6 +1067,7 @@
   // Expose tiny hook so Python GTK DnD can show a toast
   window.__lanshareToast = toast;
 
+  if (window.VDI18n) window.VDI18n.applyDomTranslations();
   bindEvents();
   loadFullState();
   connectSSE();

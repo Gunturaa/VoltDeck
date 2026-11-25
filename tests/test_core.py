@@ -593,6 +593,27 @@ class LANShareEndToEndTests(unittest.TestCase):
         self.assertIn("r-apps-grid", mob_html)
         self.assertIn("btn-cap-webcam", mob_html)
 
+    def test_12_bilingual_i18n_and_new_app_icon(self) -> None:
+        # Language switches cleanly via desktop settings & propagates to /api/info
+        r_set = requests.post(
+            f"{self.base_url}/api/desktop/settings",
+            headers=self.desktop_headers,
+            json={"language": "en"},
+            timeout=5,
+        )
+        self.assertEqual(r_set.status_code, 200)
+        info = requests.get(f"{self.base_url}/api/info", timeout=5).json()
+        self.assertEqual(info["language"], "en")
+
+        # Verify i18n.js & new glass-bolt app icon are served cleanly
+        r_i18n = requests.get(f"{self.base_url}/static/i18n.js", timeout=5)
+        self.assertEqual(r_i18n.status_code, 200)
+        self.assertIn("VDI18n", r_i18n.text)
+
+        r_icon = requests.get(f"{self.base_url}/static/app-icon.png", timeout=5)
+        self.assertEqual(r_icon.status_code, 200)
+        self.assertEqual(r_icon.headers["Content-Type"], "image/png")
+
 
 if __name__ == "__main__":
     unittest.main()
